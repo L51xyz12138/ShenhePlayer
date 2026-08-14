@@ -130,6 +130,21 @@ async function skip(delta: number) {
   wake()
 }
 
+/**
+ * 滚轮默认调音量，但落在弹出面板里时要让给原生滚动——
+ * 音轨/字幕多的时候那个列表是要滚的。
+ *
+ * 不能在模板上写 @wheel.prevent：那会在处理函数之前就无条件
+ * preventDefault，面板再怎么判断也滚不动了。
+ */
+function onWheel(e: WheelEvent) {
+  const el = e.target as HTMLElement | null
+  if (el?.closest('.menu, .speed-panel')) return
+
+  e.preventDefault()
+  void changeVolume(e.deltaY < 0 ? 5 : -5)
+}
+
 async function changeVolume(delta: number) {
   await player.setVolume(snapshot.value.volume + delta)
   showToast(`音量 ${Math.round(snapshot.value.volume)}%`)
@@ -209,7 +224,7 @@ onBeforeUnmount(() => {
     class="player"
     :class="{ idle: !chromeVisible }"
     @pointermove="wake"
-    @wheel.prevent="changeVolume($event.deltaY < 0 ? 5 : -5)"
+    @wheel="onWheel"
   >
     <!-- 画面区：单击播放/暂停，双击全屏 -->
     <div class="stage" @click="onStageClick" @dblclick="toggleFullscreen" />

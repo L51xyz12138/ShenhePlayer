@@ -7,6 +7,13 @@
 
 ## [未发布]
 
+## [0.1.2] - 2026-08-14
+
+### 修复
+
+- 播放器的音轨 / 字幕弹窗里滚动鼠标滚轮会调音量，而不是滚动待选列表。
+  现在滚轮落在弹窗内就交给列表滚动，落在画面上才调音量。
+
 ## [0.1.1] - 2026-08-14
 
 ### 修复
@@ -61,6 +68,7 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.1...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.2
 [0.1.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.0
