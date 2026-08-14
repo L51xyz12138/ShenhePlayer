@@ -316,4 +316,5 @@ export interface ItemsQuery {
   EnableImageTypes?: string
   ImageTypeLimit?: number
   NameStartsWith?: string
+  PersonIds?: string
 }

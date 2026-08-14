@@ -114,6 +114,36 @@ pub async fn check_update() -> Result<UpdateInfo> {
     })
 }
 
+/// 启动时的静默检查：一天最多一次，有新版本就广播给前端挂角标。
+/// 失败一律忽略——没网、被墙、限流都不该在启动时弹错误。
+pub fn spawn_startup_check(app: tauri::AppHandle, state: std::sync::Arc<crate::state::AppState>) {
+    tauri::async_runtime::spawn(async move {
+        const DAY: i64 = 24 * 60 * 60;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+
+        if now - state.settings.read().last_update_check < DAY {
+            return;
+        }
+
+        // 别和启动时那一堆媒体库请求抢带宽
+        tokio::time::sleep(Duration::from_secs(8)).await;
+
+        let Ok(info) = check_update().await else {
+            return;
+        };
+
+        state.settings.write().last_update_check = now;
+        let _ = state.save_settings();
+
+        if info.available {
+            let _ = app.emit("update:available", info);
+        }
+    });
+}
+
 // ---------------------------------------------------------------- 应用内更新
 
 #[derive(Debug, Clone, Serialize)]

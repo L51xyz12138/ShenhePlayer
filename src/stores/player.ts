@@ -58,12 +58,12 @@ export const usePlayerStore = defineStore('player', () => {
   // ------------------------------------------------------------ 播放入口
 
   /** 从媒体条目开始播放。resume=true 时接着上次位置。 */
-  async function play(item: BaseItem, resume = true) {
+  async function play(item: BaseItem, resume = true, mediaSourceId?: string) {
     const settings = useSettingsStore()
     starting.value = true
     error.value = ''
     try {
-      const t = await api.preparePlayback(item.id, resume)
+      const t = await api.preparePlayback(item.id, resume, mediaSourceId)
       target.value = t
 
       if (settings.player.mode === 'external') {

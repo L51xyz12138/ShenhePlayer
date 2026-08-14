@@ -130,6 +130,20 @@ impl Default for UiSettings {
     }
 }
 
+/// 记住窗口摆在哪、多大。不记的话每次开都是居中的默认尺寸，
+/// 双屏或者习惯最大化的人每次都要重新摆一遍。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct WindowState {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub maximized: bool,
+    /// 没存过时不要去套用全 0 的尺寸
+    pub saved: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -138,6 +152,10 @@ pub struct Settings {
     pub active_server: String,
     pub player: PlayerSettings,
     pub ui: UiSettings,
+    pub window: WindowState,
+    pub player_window: WindowState,
+    /// 上次自动检查更新的时间戳（秒），每天最多查一次
+    pub last_update_check: i64,
 }
 
 impl Default for Settings {
@@ -148,6 +166,9 @@ impl Default for Settings {
             active_server: String::new(),
             player: PlayerSettings::default(),
             ui: UiSettings::default(),
+            window: WindowState::default(),
+            player_window: WindowState::default(),
+            last_update_check: 0,
         }
     }
 }

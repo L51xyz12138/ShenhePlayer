@@ -5,6 +5,7 @@ import LazyImage from '@/components/LazyImage.vue'
 import MediaRow from '@/components/MediaRow.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import EpisodeItem from '@/components/EpisodeItem.vue'
+import PosterCard from '@/components/PosterCard.vue'
 import { backdropUrl, logoUrl, personUrl, posterUrl } from '@/api/images'
 import {
   formatBitrate,
@@ -33,7 +34,9 @@ const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
 
-const isSeries = computed(() => item.value?.type === 'Series')
+const isPerson = computed(() => item.value?.type === 'Person')
+/** 人物的参演作品 / 合集里的条目 */
+const related = ref<BaseItem[]>([])
 const backdrop = computed(() => (item.value ? backdropUrl(item.value, 1920) : ''))
 const logo = computed(() => (item.value ? logoUrl(item.value) : ''))
 const resumable = computed(() => (item.value ? isResumable(item.value) : false))
@@ -43,7 +46,8 @@ const resumeAt = computed(() =>
 
 /** 详情页的媒体信息条：分辨率 / 编码 / 音轨 / 体积 */
 const mediaFacts = computed(() => {
-  const source = item.value?.mediaSources?.[0]
+  const list = item.value?.mediaSources ?? []
+  const source = list.find((s) => s.id === activeSource.value) ?? list[0]
   if (!source) return []
   const video = source.mediaStreams?.find((s) => s.type === 'Video')
   const audio = source.mediaStreams?.find((s) => s.type === 'Audio')
@@ -63,6 +67,25 @@ const mediaFacts = computed(() => {
   return facts
 })
 
+/** 同一部片子的多个版本（4K / 1080P / 不同压制组） */
+const sources = computed(() => item.value?.mediaSources ?? [])
+const activeSource = ref('')
+
+function sourceLabel(src: (typeof sources.value)[number], i: number): string {
+  const video = src.mediaStreams?.find((s) => s.type === 'Video')
+  const bits: string[] = []
+  if (video?.height) {
+    const h = video.height
+    bits.push(h >= 2000 ? '4K' : h >= 1000 ? '1080P' : h >= 700 ? '720P' : `${h}P`)
+  }
+  if (video?.codec) bits.push(video.codec.toUpperCase())
+  if (src.size) bits.push(formatBytes(src.size))
+  const tail = bits.join(' · ')
+  const name = src.name?.trim()
+  if (name && tail) return `${name} · ${tail}`
+  return name || tail || `版本 ${i + 1}`
+}
+
 const cast = computed(() =>
   (item.value?.people ?? []).filter((p) => p.type === 'Actor').slice(0, 18),
 )
@@ -76,6 +99,7 @@ async function load() {
   try {
     const data = await api.getItem(props.id)
     item.value = data
+    activeSource.value = data.mediaSources?.[0]?.id ?? ''
 
     if (data.type === 'Series') {
       seasons.value = await api.getSeasons(data.id)
@@ -85,9 +109,32 @@ async function load() {
       }
     } else if (data.type === 'Season' && data.seriesId) {
       episodes.value = await api.getEpisodes(data.seriesId, data.id)
+    } else if (data.type === 'Person') {
+      // 人物页展示参演作品
+      const res = await api.getItems({
+        PersonIds: data.id,
+        Recursive: true,
+        IncludeItemTypes: 'Movie,Series',
+        SortBy: 'PremiereDate,SortName',
+        SortOrder: 'Descending',
+        Limit: 60,
+      })
+      related.value = res.items
+    } else if (data.type === 'BoxSet') {
+      const res = await api.getItems({
+        ParentId: data.id,
+        SortBy: 'PremiereDate,SortName',
+        SortOrder: 'Ascending',
+        Limit: 200,
+      })
+      related.value = res.items
     }
 
-    similar.value = await api.getSimilar(data.id, 12).catch(() => [])
+    // 人物和合集没有「相似内容」这个概念
+    similar.value =
+      data.type === 'Person' || data.type === 'BoxSet'
+        ? []
+        : await api.getSimilar(data.id, 12).catch(() => [])
   } catch (e) {
     error.value = String(e)
   } finally {
@@ -111,7 +158,9 @@ async function play(target?: BaseItem, resume = true) {
     const next = episodes.value.find((e) => !e.userData?.played) ?? episodes.value[0]
     if (next) return player.play(next, true)
   }
-  await player.play(it, resume)
+  // 只有当前条目自己有多版本时才需要指定；剧集里的某一集另算
+  const msid = it.id === item.value?.id ? activeSource.value || undefined : undefined
+  await player.play(it, resume, msid)
 }
 
 async function toggleFavorite() {
@@ -195,6 +244,19 @@ async function togglePlayed() {
               <span v-if="item.childCount">{{ item.childCount }} 季</span>
             </div>
 
+            <div v-if="sources.length > 1" class="versions">
+              <span class="t-caption dim">版本</span>
+              <button
+                v-for="(src, i) in sources"
+                :key="src.id"
+                class="version"
+                :class="{ active: activeSource === src.id }"
+                @click="activeSource = src.id"
+              >
+                {{ sourceLabel(src, i) }}
+              </button>
+            </div>
+
             <div v-if="mediaFacts.length" class="tech">
               <span v-for="f in mediaFacts" :key="f" class="tech-pill">{{ f }}</span>
             </div>
@@ -206,7 +268,11 @@ async function togglePlayed() {
               <span v-for="g in item.genres.slice(0, 6)" :key="g" class="genre">{{ g }}</span>
             </div>
 
-            <div class="actions">
+            <div v-if="isPerson" class="actions">
+              <span class="t-footnote dim">{{ related.length }} 部作品</span>
+            </div>
+
+            <div v-else class="actions">
               <button class="btn btn-white lg" @click="play()">
                 <AppIcon name="play" :size="17" filled />
                 {{ resumable ? `继续 ${formatTime(resumeAt)}` : '播放' }}
@@ -259,11 +325,32 @@ async function togglePlayed() {
         </div>
       </section>
 
+      <!-- ---- 参演作品 / 合集内容 ---- -->
+      <section v-if="related.length" class="block">
+        <h2 class="t-title-3 block-head">{{ isPerson ? '参演作品' : '合集内容' }}</h2>
+        <div class="related">
+          <PosterCard
+            v-for="(it, i) in related"
+            :key="it.id"
+            :item="it"
+            :eager="i < 12"
+            @play="play($event, true)"
+          />
+        </div>
+      </section>
+
       <!-- ---- 演职人员 ---- -->
       <section v-if="cast.length" class="block">
         <h2 class="title-md block-head">演职人员</h2>
         <div class="cast">
-          <div v-for="p in cast" :key="`${p.id}-${p.name}`" class="person">
+          <component
+            :is="p.id ? 'RouterLink' : 'div'"
+            v-for="p in cast"
+            :key="`${p.id}-${p.name}`"
+            :to="p.id ? { name: 'item', params: { id: p.id } } : undefined"
+            class="person"
+            :class="{ linked: !!p.id }"
+          >
             <LazyImage
               :src="personUrl(p.id ?? '', p.primaryImageTag, 240)"
               :alt="p.name"
@@ -275,7 +362,7 @@ async function togglePlayed() {
             </LazyImage>
             <div class="person-name truncate">{{ p.name }}</div>
             <div class="person-role truncate">{{ p.role }}</div>
-          </div>
+          </component>
         </div>
       </section>
 
@@ -439,6 +526,35 @@ async function togglePlayed() {
   font-weight: 620;
 }
 
+.versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.version {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 540;
+  color: rgba(235, 235, 245, 0.85);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+
+.version:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.version.active {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
 .tech {
   display: flex;
   flex-wrap: wrap;
@@ -567,6 +683,12 @@ async function togglePlayed() {
   gap: 0.5rem;
 }
 
+.related {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 1.4rem 1.1rem;
+}
+
 .cast {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
@@ -574,8 +696,21 @@ async function togglePlayed() {
 }
 
 .person {
+  display: block;
   text-align: center;
   min-width: 0;
+}
+
+.person.linked {
+  transition: transform var(--t-fast) var(--ease);
+}
+
+.person.linked:hover {
+  transform: translateY(-2px);
+}
+
+.person.linked:hover .person-name {
+  color: var(--accent);
 }
 
 .avatar {

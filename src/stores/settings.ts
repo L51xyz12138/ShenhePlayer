@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { onScopeDispose, ref, watchEffect } from 'vue'
+import { listen } from '@tauri-apps/api/event'
 import * as api from '@/api'
-import type { AppInfo, PlayerSettings, Settings, Theme, UiSettings } from '@/types'
+import type { AppInfo, PlayerSettings, Settings, Theme, UiSettings, UpdateInfo } from '@/types'
 
 const DEFAULT_PLAYER: PlayerSettings = {
   mode: 'internal',
@@ -33,6 +34,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const ui = ref<UiSettings>({ ...DEFAULT_UI })
   const info = ref<AppInfo | null>(null)
   const loaded = ref(false)
+  /** 启动时静默检查到的新版本，用来在侧边栏「设置」上挂个角标 */
+  const pendingUpdate = ref<UpdateInfo | null>(null)
+
+  void listen<UpdateInfo>('update:available', (e) => {
+    pendingUpdate.value = e.payload
+  })
 
   // 跟随系统时要实时响应 Windows 的浅色/深色切换
   const systemDark = ref(true)
@@ -78,7 +85,18 @@ export const useSettingsStore = defineStore('settings', () => {
     root.style.setProperty('--accent-hover', shift(ui.value.accent, 0.16))
   })
 
-  return { player, ui, info, loaded, systemDark, load, savePlayer, saveUi, resolveTheme }
+  return {
+    player,
+    ui,
+    info,
+    loaded,
+    systemDark,
+    pendingUpdate,
+    load,
+    savePlayer,
+    saveUi,
+    resolveTheme,
+  }
 })
 
 function parseHex(hex: string): [number, number, number] {

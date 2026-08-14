@@ -254,27 +254,23 @@ impl MpvSession {
     /// 起播位置和标题走属性而不是 loadfile 的 options 参数：
     /// mpv 0.38 在 flags 之后插入了一个 index 参数，把 options 直接接在
     /// 第四位会被当成 index，整条命令静默失效。属性写法各版本都一致。
-    pub fn load_file(
-        &self,
-        url: &str,
-        start: f64,
-        title: &str,
-        external_subs: &[(String, String)],
-    ) -> Result<()> {
+    pub fn load_file(&self, url: &str, start: f64, title: &str) -> Result<()> {
         self.set_property("force-media-title", json!(title))?;
         self.set_property("start", json!(format!("{:.3}", start.max(0.0))))?;
+        self.command(vec![json!("loadfile"), json!(url), json!("replace")])
+    }
 
-        self.command(vec![json!("loadfile"), json!(url), json!("replace")])?;
-
-        for (url, title) in external_subs {
-            self.command(vec![
-                json!("sub-add"),
-                json!(url),
-                json!("auto"),
-                json!(title),
-            ])?;
-        }
-        Ok(())
+    /// 挂载外挂字幕。select=true 时同时切过去。
+    ///
+    /// 必须等 file-loaded 之后再调：loadfile 是异步的，紧跟着 sub-add
+    /// 会挂到上一个文件上，甚至直接被丢弃。
+    pub fn add_subtitle(&self, url: &str, title: &str, select: bool) -> Result<()> {
+        self.command(vec![
+            json!("sub-add"),
+            json!(url),
+            json!(if select { "select" } else { "auto" }),
+            json!(title),
+        ])
     }
 
     pub fn set_pause(&self, paused: bool) -> Result<()> {

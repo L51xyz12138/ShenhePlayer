@@ -494,6 +494,9 @@ pub struct ItemsQuery {
     pub image_type_limit: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name_starts_with: Option<String>,
+    /// 按人物筛选，用于「某演员参演的作品」
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub person_ids: Option<String>,
 }
 
 /// 归一化服务器地址：补协议、去尾斜杠、去掉用户手填的 /emby 后缀

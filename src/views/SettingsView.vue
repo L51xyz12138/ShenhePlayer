@@ -119,6 +119,8 @@ const THEMES: { value: Theme; label: string }[] = [
 onMounted(async () => {
   if (!settings.loaded) await settings.load()
   players.value = await api.listExternalPlayers()
+  // 启动时已经静默查过了，直接用结果，别让用户再点一次
+  if (settings.pendingUpdate) update.value = settings.pendingUpdate
 })
 
 const mpvStatus = computed(() => {

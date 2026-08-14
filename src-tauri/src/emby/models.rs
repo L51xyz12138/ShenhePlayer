@@ -308,6 +308,12 @@ pub struct PlaybackTarget {
     pub external_subtitles: Vec<ExternalSubtitle>,
     pub default_audio_index: Option<i32>,
     pub default_subtitle_index: Option<i32>,
+    /// Emby 的默认音轨换算成 mpv 的 aid（从 1 开始，按文件里音轨出现的顺序）
+    pub mpv_aid: Option<i64>,
+    /// 内封默认字幕换算成 mpv 的 sid
+    pub mpv_sid: Option<i64>,
+    /// 默认字幕是外挂字幕时，记它在 external_subtitles 里的下标
+    pub default_external_sub: Option<usize>,
     pub backdrop_url: Option<String>,
 }
 

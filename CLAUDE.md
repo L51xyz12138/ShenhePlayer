@@ -150,7 +150,20 @@ Hero、详情页顶部、播放控制层里的文字颜色都在组件内固定�
 这条路径不受 API 限额约束。发布说明仍然只能走 API，所以做成「拿得到就显示，拿不到就算了」，
 不让它影响「有没有新版本」这个核心判断。见 `src-tauri/src/update.rs`。
 
-### 12. 应用内更新：安装程序要传 `/S /R`
+### 12. Emby 的流索引 ≠ mpv 的 aid/sid
+
+Emby 的 `DefaultAudioStreamIndex` / `DefaultSubtitleStreamIndex` 是**文件里的绝对流索引**，
+mpv 的 `aid`/`sid` 是「同类轨道里的第几个，从 1 开始」。直接把 Emby 的数字丢给 mpv 是错的。
+换算方式：把同类轨道按流索引排序，找到目标的位置 +1。见 `prepare_playback` 里的 `mpv_aid`。
+
+只在直连（`is_direct`）时成立 —— 转码流的轨道顺序和源文件对不上。
+
+另外两个时机问题：
+- `loadfile` 是异步的，紧跟着设 `aid`/`sid` 或 `sub-add` 都会落空，必须等 `file-loaded`
+  事件之后再做，见 `apply_default_tracks`。
+- 外挂字幕用 `sub-add <url> select` 可以加载的同时选中，不用再单独设 `sid`。
+
+### 13. 应用内更新：安装程序要传 `/S /R`
 
 Tauri 的 NSIS 安装包默认走完整向导（欢迎页 → 下一步 → 安装 → 完成）。
 更新场景下用户点的是「立即安装」，不该再被问一遍，所以传 `/S`（静默）
@@ -164,13 +177,16 @@ Tauri 的 NSIS 安装包默认走完整向导（欢迎页 → 下一步 → 安�
 「下载任意文件并执行」的入口。下载完校验 Content-Length 与 PE 头 —— TLS
 已经保证传输不被篡改，这里防的是把下到一半的安装包跑起来。
 
-### 13. 截图验证的注意事项
+### 14. 截图验证的注意事项
 
 - `PrintWindow` **抓不到 mpv 的 GPU 画面**，返回全黑。要验证视频是否真的出画，得用真实屏幕采样。
 - 采样前必须确认前台窗口属于本进程，否则会拍到用户屏幕上的其它内容（`scripts/shot-live.ps1` 里有这个校验，
   不满足就直接放弃截图）。
 - DPI：PowerShell 进程默认 DPI 不感知，`GetClientRect` 返回虚拟化后的逻辑像素，截出来是裁切的。
   脚本里都调了 `SetProcessDPIAware()`。
+- 用户正在操作电脑时 Windows 会**阻止后台进程抢前台**，`click.ps1` / `shot-live.ps1` 会
+  直接放弃（这是有意的，别去绕）。只需要看界面的话用 `shot-any.ps1`，它走 PrintWindow，
+  不需要前台，但抓不到 mpv 的画面。
 - **`.ps1` 文件保持纯 ASCII**：Windows PowerShell 5.1 会用系统 ANSI 代码页读无 BOM 的 UTF-8 文件，
   中文注释会把解析搞坏。
 

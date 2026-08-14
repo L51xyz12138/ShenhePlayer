@@ -116,6 +116,32 @@ pub async fn prepare_playback(
         }
     }
 
+    // Emby 给的是文件里的绝对流索引，mpv 的 aid/sid 是「同类轨道里的第几个」，
+    // 两者对不上，必须按流索引排序后换算。不做这一步的话 Emby 里设好的
+    // 语言偏好就白设了 —— mpv 会按自己的规则挑一条。
+    let mpv_aid = source.default_audio_stream_index.and_then(|want| {
+        let mut ordered: Vec<i32> = audio_streams.iter().map(|s| s.index).collect();
+        ordered.sort_unstable();
+        ordered.iter().position(|i| *i == want).map(|p| p as i64 + 1)
+    });
+
+    // 内封字幕才有 sid；外挂字幕是 sub-add 进来的，另算
+    let embedded_subs: Vec<i32> = {
+        let mut v: Vec<i32> = subtitle_streams
+            .iter()
+            .filter(|s| !s.is_external)
+            .map(|s| s.index)
+            .collect();
+        v.sort_unstable();
+        v
+    };
+    let mpv_sid = source.default_subtitle_stream_index.and_then(|want| {
+        embedded_subs.iter().position(|i| *i == want).map(|p| p as i64 + 1)
+    });
+    let default_external_sub = source
+        .default_subtitle_stream_index
+        .and_then(|want| external_subtitles.iter().position(|s| s.index == want));
+
     let title = match item.kind.as_str() {
         "Episode" => item
             .series_name
@@ -160,6 +186,9 @@ pub async fn prepare_playback(
         bitrate: source.bitrate,
         default_audio_index: source.default_audio_stream_index,
         default_subtitle_index: source.default_subtitle_stream_index,
+        mpv_aid,
+        mpv_sid,
+        default_external_sub,
         audio_streams,
         subtitle_streams,
         video_stream,
@@ -249,6 +278,9 @@ pub async fn run_test_pattern(app: &AppHandle, state: &Arc<AppState>) -> Result<
         external_subtitles: Vec::new(),
         default_audio_index: None,
         default_subtitle_index: None,
+        mpv_aid: None,
+        mpv_sid: None,
+        default_external_sub: None,
         backdrop_url: None,
     };
 
@@ -286,13 +318,8 @@ async fn open_in_mpv(
 
     let session = guard.as_ref().expect("刚刚已确保存在");
 
-    let subs: Vec<(String, String)> = target
-        .external_subtitles
-        .iter()
-        .map(|s| (s.url.clone(), s.title.clone()))
-        .collect();
-
-    session.load_file(&target.url, target.start_position, &target.title, &subs)?;
+    // 外挂字幕和默认轨道都等 file-loaded 之后再处理，见 apply_default_tracks
+    session.load_file(&target.url, target.start_position, &target.title)?;
     session.set_pause(false)?;
 
     let _ = window.set_title(&format!("{} - ShenhePlayer", target.title));
@@ -574,6 +601,18 @@ fn ensure_player_window(app: &AppHandle, state: &Arc<AppState>) -> Result<tauri:
     .build()
     .map_err(|e| AppError::Player(format!("创建播放窗口失败: {e}")))?;
 
+    // 窗口还没显示，这时候摆位置不会看到跳动
+    {
+        let saved = state.settings.read().player_window.clone();
+        if saved.saved && saved.width > 0 && saved.height > 0 {
+            let _ = window.set_size(tauri::PhysicalSize::new(saved.width, saved.height));
+            let _ = window.set_position(tauri::PhysicalPosition::new(saved.x, saved.y));
+            if saved.maximized {
+                let _ = window.maximize();
+            }
+        }
+    }
+
     let state_for_events = state.clone();
     let app_for_events = app.clone();
     window.on_window_event(move |event| match event {
@@ -678,6 +717,7 @@ fn handle_mpv_event(app: &AppHandle, event: MpvEvent) {
             let _ = app.emit("player:state", snapshot);
         }
         MpvEvent::FileLoaded => {
+            apply_default_tracks(app);
             let _ = app.emit("player:loaded", ());
         }
         MpvEvent::EndFile { reason } => {
@@ -689,3 +729,45 @@ fn handle_mpv_event(app: &AppHandle, event: MpvEvent) {
     }
 }
 
+
+/// 挂外挂字幕，并把 Emby 选好的默认音轨/字幕切过去。
+///
+/// 放在 file-loaded 之后做的原因：loadfile 是异步的，命令发出去时轨道还没
+/// 建立，这时候设 aid/sid 或者 sub-add 都会落空。
+fn apply_default_tracks(app: &AppHandle) {
+    let Some(target) = app.state::<Arc<AppState>>().target.read().clone() else {
+        return;
+    };
+
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<Arc<AppState>>();
+        let guard = state.mpv.lock().await;
+        let Some(session) = guard.as_ref() else {
+            return;
+        };
+
+        // 外挂字幕：Emby 指定为默认的那条直接选中
+        for (i, sub) in target.external_subtitles.iter().enumerate() {
+            let select = target.default_external_sub == Some(i);
+            if let Err(e) = session.add_subtitle(&sub.url, &sub.title, select) {
+                log::warn!("挂载外挂字幕失败: {e}");
+            }
+        }
+
+        // 转码流里轨道顺序和源文件对不上，索引换算不成立，交给 mpv 自己挑
+        if !target.is_direct {
+            return;
+        }
+
+        if let Some(aid) = target.mpv_aid {
+            let _ = session.set_property("aid", json!(aid));
+        }
+        // 默认字幕是外挂的话，上面 sub-add 已经选中了，别再用 sid 覆盖
+        if target.default_external_sub.is_none() {
+            if let Some(sid) = target.mpv_sid {
+                let _ = session.set_property("sid", json!(sid));
+            }
+        }
+    });
+}

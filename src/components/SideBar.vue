@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
+import { useSettingsStore } from '@/stores/settings'
 import AppIcon from './AppIcon.vue'
 import type { BaseItem } from '@/types'
 
 const session = useSessionStore()
+const settings = useSettingsStore()
 const route = useRoute()
 /** 头像取不到时退回首字母，避免显示浏览器的破图图标 */
 const avatarFailed = ref(false)
@@ -68,6 +70,11 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
       <RouterLink :to="{ name: 'settings' }" class="item" active-class="active">
         <AppIcon name="settings" :size="18" />
         <span>设置</span>
+        <span
+          v-if="settings.pendingUpdate"
+          class="dot"
+          :title="`有新版本 ${settings.pendingUpdate.latest}`"
+        />
       </RouterLink>
 
       <RouterLink
@@ -219,6 +226,15 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
 
 .item.active svg {
   color: var(--accent);
+}
+
+/* 有新版本时的小红点 */
+.dot {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-radius: var(--r-full);
+  background: var(--accent);
 }
 
 .account {

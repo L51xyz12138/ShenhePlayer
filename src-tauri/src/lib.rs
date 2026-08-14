@@ -7,6 +7,7 @@ mod state;
 mod update;
 mod win;
 
+use crate::config::WindowState;
 use crate::emby::{seconds_to_ticks, ProgressReport};
 use crate::state::AppState;
 use std::sync::Arc;
@@ -81,12 +82,16 @@ pub fn run() {
 
             // 前端渲染好再显示，避免启动时白屏闪烁
             if let Some(main) = app.get_webview_window("main") {
+                // 窗口还没显示，这时候摆位置不会看到跳动
+                restore_window_state(&main, &app_state.settings.read().window);
+
                 let handle_for_events = handle.clone();
                 let state_for_events = app_state.clone();
 
                 main.on_window_event(move |event| {
                     // 关掉浏览窗口就是退出整个程序，播放窗口和 mpv 一起收掉
                     if let WindowEvent::CloseRequested { .. } = event {
+                        save_window_state(&handle_for_events, &state_for_events);
                         let _ = handle_for_events.emit("app:closing", ());
                         shutdown(&state_for_events);
                     }
@@ -94,6 +99,7 @@ pub fn run() {
             }
 
             spawn_show_fallback(handle.clone());
+            update::spawn_startup_check(handle.clone(), app_state.clone());
             spawn_progress_reporter(handle.clone(), app_state.clone());
 
             // 冒烟自检：SHENHE_SELFTEST=1 启动时直接跑一遍内置播放器，
@@ -105,6 +111,72 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("启动 ShenhePlayer 失败");
+}
+
+/// 把上次记住的位置和尺寸套回去。没存过就保持配置文件里的默认值。
+fn restore_window_state(window: &tauri::WebviewWindow, state: &WindowState) {
+    if !state.saved || state.width == 0 || state.height == 0 {
+        return;
+    }
+
+    let _ = window.set_size(tauri::PhysicalSize::new(state.width, state.height));
+    let _ = window.set_position(tauri::PhysicalPosition::new(state.x, state.y));
+    if state.maximized {
+        let _ = window.maximize();
+    }
+}
+
+fn capture_window_state(window: &tauri::WebviewWindow) -> Option<WindowState> {
+    // 全屏时的尺寸就是整块屏幕，记下来的话下次开窗就是屏幕那么大，
+    // 保持上一次的记录更合理
+    if window.is_fullscreen().unwrap_or(false) {
+        return None;
+    }
+
+    let maximized = window.is_maximized().unwrap_or(false);
+
+    // 最大化时记的必须是还原后的尺寸，否则下次启动会把「最大化的大小」
+    // 当成普通窗口尺寸，取消最大化后窗口就撑满屏幕了
+    if maximized {
+        let _ = window.unmaximize();
+    }
+    let pos = window.outer_position().ok()?;
+    let size = window.inner_size().ok()?;
+    if maximized {
+        let _ = window.maximize();
+    }
+
+    Some(WindowState {
+        x: pos.x,
+        y: pos.y,
+        width: size.width,
+        height: size.height,
+        maximized,
+        saved: true,
+    })
+}
+
+/// 关闭前把两个窗口的位置尺寸记下来
+fn save_window_state(app: &tauri::AppHandle, state: &Arc<AppState>) {
+    let main = app
+        .get_webview_window("main")
+        .and_then(|w| capture_window_state(&w));
+    let player = app
+        .get_webview_window("player")
+        .and_then(|w| capture_window_state(&w));
+
+    {
+        let mut settings = state.settings.write();
+        if let Some(m) = main {
+            settings.window = m;
+        }
+        if let Some(p) = player {
+            settings.player_window = p;
+        }
+    }
+    if let Err(e) = state.save_settings() {
+        log::warn!("保存窗口状态失败: {e}");
+    }
 }
 
 /// 窗口默认隐藏、由前端渲染完再显示。万一前端初始化抛异常，
