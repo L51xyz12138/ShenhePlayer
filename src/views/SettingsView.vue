@@ -501,7 +501,7 @@ async function signOut() {
           <span :style="{ transform: `scaleX(${percent / 100})` }" />
         </div>
         <span class="t-caption dim num">
-          {{ installerPath ? '下载完成，点「立即安装」后程序会退出并启动安装程序' : `${percent}% · ${sizeText}` }}
+          {{ installerPath ? '下载完成，点「立即安装」后程序会自动更新并重新打开' : `${percent}% · ${sizeText}` }}
         </span>
       </div>
 

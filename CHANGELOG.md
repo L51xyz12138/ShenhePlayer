@@ -7,6 +7,13 @@
 
 ## [未发布]
 
+## [0.1.5] - 2026-08-14
+
+### 变更
+
+- 应用内更新改为静默安装并自动重新打开。此前点「立即安装」会弹出完整的安装向导，
+  还要一路点「下一步」，对更新来说没有意义。
+
 ## [0.1.4] - 2026-08-14
 
 ### 修复
@@ -89,7 +96,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.4...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.5
 [0.1.4]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.4
 [0.1.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.3
 [0.1.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.2

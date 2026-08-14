@@ -223,7 +223,12 @@ pub fn install_update(app: tauri::AppHandle, path: String) -> Result<()> {
     }
     verify_installer(&path)?;
 
+    // /S 静默安装、/R 装完自动重启应用。
+    // 应用内更新走完整安装向导（欢迎页→下一步→…）没有意义，用户点的是
+    // 「立即安装」，预期就是自己更新完再打开。NSIS 会忽略不认识的开关，
+    // 所以即使模板不支持 /R，最差也只是装完不自动启动。
     std::process::Command::new(&path)
+        .args(["/S", "/R"])
         .spawn()
         .map_err(|e| AppError::Other(format!("启动安装程序失败: {e}")))?;
 
