@@ -3,6 +3,14 @@
 //! 没有用 tauri-plugin-updater —— 那套要签名密钥和自建更新清单，
 //! 对一个开源小工具来说太重。这里只做「有没有新版本」的判断，
 //! 真正的下载安装交给用户点开 Release 页面。
+//!
+//! 版本号**不走 REST API**：api.github.com 未认证只有 60 次/小时，而且是按
+//! 出口 IP 计的。用了 VPN 或公司网关的用户，配额经常已经被别人用光，
+//! 实测直接吃 403。改成读 `/releases/latest` 这个网页地址的 302 跳转，
+//! 从 Location 里取 tag，不受 API 限额约束。
+//!
+//! 发布说明仍然只能从 API 拿，所以那一步做成「能拿到就显示，拿不到就算了」，
+//! 不影响「有没有新版本」这个核心判断。
 
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -22,91 +30,111 @@ pub struct UpdateInfo {
     pub no_release: bool,
     pub notes: String,
     pub url: String,
-    pub published_at: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct GithubRelease {
-    #[serde(default)]
-    tag_name: String,
-    #[serde(default)]
-    name: String,
     #[serde(default)]
     body: String,
     #[serde(default)]
-    html_url: String,
-    #[serde(default)]
-    published_at: String,
-    #[serde(default)]
-    draft: bool,
-    #[serde(default)]
-    prerelease: bool,
+    name: String,
+}
+
+fn releases_url() -> String {
+    format!("https://github.com/{REPO}/releases")
 }
 
 #[tauri::command]
 pub async fn check_update() -> Result<UpdateInfo> {
-    let none = UpdateInfo {
-        current: CURRENT.into(),
-        latest: CURRENT.into(),
-        available: false,
-        no_release: true,
-        notes: String::new(),
-        url: format!("https://github.com/{REPO}/releases"),
-        published_at: String::new(),
-    };
-
     let client = reqwest::Client::builder()
         .user_agent(format!("ShenhePlayer/{CURRENT}"))
         .timeout(Duration::from_secs(15))
+        // 要自己读 Location，不能让 reqwest 跟着跳
+        .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
     let resp = client
-        .get(format!("https://api.github.com/repos/{REPO}/releases/latest"))
-        .header("Accept", "application/vnd.github+json")
+        .get(format!("https://github.com/{REPO}/releases/latest"))
         .send()
         .await?;
 
-    // 还没发过 Release，不算错误
-    if resp.status() == reqwest::StatusCode::NOT_FOUND {
-        return Ok(none);
+    let status = resp.status();
+
+    // 一个 Release 都没发过：GitHub 直接 404
+    if status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(UpdateInfo {
+            current: CURRENT.into(),
+            latest: CURRENT.into(),
+            available: false,
+            no_release: true,
+            notes: String::new(),
+            url: releases_url(),
+        });
     }
-    if !resp.status().is_success() {
+
+    if !status.is_redirection() {
         return Err(AppError::Server {
-            status: resp.status().as_u16(),
+            status: status.as_u16(),
             body: "检查更新失败，请稍后再试".into(),
         });
     }
 
-    let release: GithubRelease = resp.json().await?;
-    if release.draft || release.prerelease || release.tag_name.is_empty() {
-        return Ok(none);
-    }
+    let location = resp
+        .headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
 
-    let latest = release.tag_name.trim_start_matches(['v', 'V']).to_string();
+    let Some(tag) = tag_from_release_url(&location) else {
+        return Err(AppError::Other("没能解析出最新版本号".into()));
+    };
+
+    let latest = tag.trim_start_matches(['v', 'V']).to_string();
+    let available = is_newer(&latest, CURRENT);
+
+    // 发布说明是锦上添花：API 被限流也不该让整个检查失败
+    let notes = if available {
+        fetch_notes(&client, &tag).await.unwrap_or_default()
+    } else {
+        String::new()
+    };
 
     Ok(UpdateInfo {
-        available: is_newer(&latest, CURRENT),
         current: CURRENT.into(),
-        latest: latest.clone(),
+        latest,
+        available,
         no_release: false,
-        notes: if release.body.trim().is_empty() {
-            release.name
-        } else {
-            release.body
-        },
-        url: if release.html_url.is_empty() {
-            format!("https://github.com/{REPO}/releases")
-        } else {
-            release.html_url
-        },
-        published_at: release.published_at,
+        notes,
+        url: if location.is_empty() { releases_url() } else { location },
     })
+}
+
+async fn fetch_notes(client: &reqwest::Client, tag: &str) -> Option<String> {
+    let resp = client
+        .get(format!("https://api.github.com/repos/{REPO}/releases/tags/{tag}"))
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .ok()?;
+
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    let release: GithubRelease = resp.json().await.ok()?;
+    let notes = if release.body.trim().is_empty() {
+        release.name
+    } else {
+        release.body
+    };
+    Some(notes)
 }
 
 /// 用系统默认浏览器打开发布页
 #[tauri::command]
 pub fn open_release_page(url: String) -> Result<()> {
-    // 只允许打开本项目的 GitHub 地址，避免这个命令被当成任意 URL 启动器
+    // 只允许打开本项目的 GitHub 地址，避免这个命令变成任意 URL 启动器
     let allowed = format!("https://github.com/{REPO}");
     if !url.starts_with(&allowed) {
         return Err(AppError::Other("不允许打开该地址".into()));
@@ -121,6 +149,15 @@ pub fn open_release_page(url: String) -> Result<()> {
 }
 
 use std::os::windows::process::CommandExt as _;
+
+/// 从 .../releases/tag/v1.2.3 里取出 v1.2.3
+fn tag_from_release_url(url: &str) -> Option<String> {
+    let tag = url.trim_end_matches('/').rsplit('/').next()?;
+    if tag.is_empty() || !tag.contains(|c: char| c.is_ascii_digit()) {
+        return None;
+    }
+    Some(tag.to_string())
+}
 
 /// 语义化版本比较。解析失败时保守返回 false，宁可不提示也不误报。
 fn is_newer(latest: &str, current: &str) -> bool {
@@ -155,7 +192,6 @@ mod tests {
 
     #[test]
     fn tolerates_loose_version_strings() {
-        assert_eq!(parse_version("v1.2.3"), None, "调用方需要先去掉 v 前缀");
         assert_eq!(parse_version("1.2.3"), Some((1, 2, 3)));
         assert_eq!(parse_version("1.2"), Some((1, 2, 0)));
         assert_eq!(parse_version("2"), Some((2, 0, 0)));
@@ -167,5 +203,20 @@ mod tests {
     fn unparsable_versions_never_prompt() {
         assert!(!is_newer("latest", "0.1.0"));
         assert!(!is_newer("", "0.1.0"));
+    }
+
+    #[test]
+    fn extracts_tag_from_redirect_location() {
+        assert_eq!(
+            tag_from_release_url("https://github.com/o/r/releases/tag/v0.1.0").as_deref(),
+            Some("v0.1.0")
+        );
+        assert_eq!(
+            tag_from_release_url("https://github.com/o/r/releases/tag/1.2.3/").as_deref(),
+            Some("1.2.3")
+        );
+        // 没有版本号的地址（比如仓库根本没有 Release）不应该被误认成 tag
+        assert_eq!(tag_from_release_url("https://github.com/o/r/releases"), None);
+        assert_eq!(tag_from_release_url(""), None);
     }
 }

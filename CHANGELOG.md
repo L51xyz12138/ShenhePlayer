@@ -7,6 +7,14 @@
 
 ## [未发布]
 
+## [0.1.1] - 2026-08-14
+
+### 修复
+
+- 检查更新在部分网络环境下必定失败（GitHub 未认证 API 限额按出口 IP 计算，
+  用 VPN 或公司网关时配额常被同一出口的其他人用光，直接返回 403）。
+  改为读取 `releases/latest` 的重定向来获取版本号，不再受 API 限额约束。
+
 ## [0.1.0] - 2026-08-14
 
 首个版本。Windows 平台的 Emby 客户端，安装包 2.0 MB。
@@ -53,5 +61,6 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.0...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.0

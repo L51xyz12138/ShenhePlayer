@@ -130,7 +130,22 @@ owned 窗口永远显示在 owner 之上、跟着 owner 最小化、不占任务
 Hero、详情页顶部、播放控制层里的文字颜色都在组件内固定成浅色系。
 遮罩同理：暗色下可以淡入 `var(--bg)`，亮色下淡入白色会让白字消失，需要单独给一套深色遮罩。
 
-### 10. 截图验证的注意事项
+### 10. 出正式包必须走 `npm run app:build`，不能用 `cargo build --release`
+
+直接 `cargo build --release` 绕过了 Tauri CLI，tauri-build 拿不到 CLI 注入的环境变量，
+产物仍然指向 dev server（`http://localhost:5180`），双击运行只会看到
+`ERR_CONNECTION_REFUSED`。改 Rust 代码后想验证 release 行为，老老实实跑 `npm run app:build`。
+
+### 11. GitHub 未认证 API 会被限流，别用来做检查更新
+
+`api.github.com` 未认证只有 60 次/小时，而且**按出口 IP 计**。用 VPN 或公司网关的用户，
+配额经常已经被同一出口的其他人用光，直接吃 403。
+
+改成读 `https://github.com/<repo>/releases/latest` 的 **302 跳转**，从 `Location` 里取 tag，
+这条路径不受 API 限额约束。发布说明仍然只能走 API，所以做成「拿得到就显示，拿不到就算了」，
+不让它影响「有没有新版本」这个核心判断。见 `src-tauri/src/update.rs`。
+
+### 12. 截图验证的注意事项
 
 - `PrintWindow` **抓不到 mpv 的 GPU 画面**，返回全黑。要验证视频是否真的出画，得用真实屏幕采样。
 - 采样前必须确认前台窗口属于本进程，否则会拍到用户屏幕上的其它内容（`scripts/shot-live.ps1` 里有这个校验，

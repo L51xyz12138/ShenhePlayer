@@ -281,7 +281,6 @@ export interface UpdateInfo {
   noRelease: boolean
   notes: string
   url: string
-  publishedAt: string
 }
 
 export interface AppInfo {
