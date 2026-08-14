@@ -105,3 +105,7 @@ export const playerStartDrag = () => invoke<void>('player_start_drag')
 
 export const checkUpdate = () => invoke<UpdateInfo>('check_update')
 export const openReleasePage = (url: string) => invoke<void>('open_release_page', { url })
+/** 下载安装包到临时目录，返回文件路径。进度通过 update:progress 事件推送。 */
+export const downloadUpdate = () => invoke<string>('download_update')
+/** 启动安装程序，本进程随即退出 */
+export const installUpdate = (path: string) => invoke<void>('install_update', { path })

@@ -1,8 +1,7 @@
 //! 检查更新：读 GitHub Releases，比对版本号。
 //!
 //! 没有用 tauri-plugin-updater —— 那套要签名密钥和自建更新清单，
-//! 对一个开源小工具来说太重。这里只做「有没有新版本」的判断，
-//! 真正的下载安装交给用户点开 Release 页面。
+//! 对一个开源小工具来说太重。这里自己实现：查版本 → 下载安装包 → 起安装程序。
 //!
 //! 版本号**不走 REST API**：api.github.com 未认证只有 60 次/小时，而且是按
 //! 出口 IP 计的。用了 VPN 或公司网关的用户，配额经常已经被别人用光，
@@ -14,6 +13,7 @@
 
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
+use tauri::Emitter;
 use std::time::Duration;
 
 const REPO: &str = "L51xyz12138/ShenhePlayer";
@@ -30,6 +30,8 @@ pub struct UpdateInfo {
     pub no_release: bool,
     pub notes: String,
     pub url: String,
+    /// Release 的 tag（带 v 前缀），下载安装包时要用
+    pub tag: String,
 }
 
 #[derive(Deserialize, Default)]
@@ -69,6 +71,7 @@ pub async fn check_update() -> Result<UpdateInfo> {
             no_release: true,
             notes: String::new(),
             url: releases_url(),
+            tag: String::new(),
         });
     }
 
@@ -107,7 +110,126 @@ pub async fn check_update() -> Result<UpdateInfo> {
         no_release: false,
         notes,
         url: if location.is_empty() { releases_url() } else { location },
+        tag,
     })
+}
+
+// ---------------------------------------------------------------- 应用内更新
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadProgress {
+    pub downloaded: u64,
+    /// 服务器给的总长度，未知时为 0
+    pub total: u64,
+}
+
+/// 下载新版本安装包到临时目录，返回文件路径。
+///
+/// 不接受前端传来的 URL：内部重新查一次最新版本，URL 完全由代码拼，
+/// 避免这个命令变成「下载任意文件并执行」的入口。
+#[tauri::command]
+pub async fn download_update(app: tauri::AppHandle) -> Result<String> {
+    use tokio::io::AsyncWriteExt;
+
+    let info = check_update().await?;
+    if !info.available {
+        return Err(AppError::Other("当前已是最新版本".into()));
+    }
+
+    let file_name = format!("ShenhePlayer_{}_x64-setup.exe", info.latest);
+    let url = format!(
+        "https://github.com/{REPO}/releases/download/{}/{}",
+        info.tag, file_name
+    );
+
+    let client = reqwest::Client::builder()
+        .user_agent(format!("ShenhePlayer/{CURRENT}"))
+        .connect_timeout(Duration::from_secs(15))
+        // 不设总超时：安装包几 MB，网慢的时候别中途掐断
+        .build()?;
+
+    let mut resp = client.get(&url).send().await?;
+    if !resp.status().is_success() {
+        return Err(AppError::Server {
+            status: resp.status().as_u16(),
+            body: "下载安装包失败".into(),
+        });
+    }
+
+    let total = resp.content_length().unwrap_or(0);
+
+    let dir = std::env::temp_dir().join("ShenhePlayer-update");
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(&file_name);
+
+    let mut file = tokio::fs::File::create(&path).await?;
+    let mut downloaded: u64 = 0;
+    let mut last_report = std::time::Instant::now() - Duration::from_secs(1);
+
+    while let Some(chunk) = resp.chunk().await? {
+        file.write_all(&chunk).await?;
+        downloaded += chunk.len() as u64;
+
+        // 进度按 10Hz 上报就够了，不然光发事件就占掉不少 CPU
+        if last_report.elapsed() >= Duration::from_millis(100) {
+            last_report = std::time::Instant::now();
+            let _ = app.emit("update:progress", DownloadProgress { downloaded, total });
+        }
+    }
+    file.flush().await?;
+    drop(file);
+
+    let _ = app.emit("update:progress", DownloadProgress { downloaded, total });
+
+    // 完整性检查。TLS 已经保证传输不被篡改，这里要防的是「下到一半断了」
+    // 却把半个安装包运行起来。
+    if total > 0 && downloaded != total {
+        let _ = std::fs::remove_file(&path);
+        return Err(AppError::Other(format!(
+            "安装包下载不完整（{downloaded}/{total} 字节），请重试"
+        )));
+    }
+    verify_installer(&path)?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// 起码得是个能运行的 Windows 可执行文件
+fn verify_installer(path: &std::path::Path) -> Result<()> {
+    let meta = std::fs::metadata(path)?;
+    if meta.len() < 512 * 1024 {
+        let _ = std::fs::remove_file(path);
+        return Err(AppError::Other("安装包异常（体积过小），请重试".into()));
+    }
+
+    let head = std::fs::read(path)?;
+    if !head.starts_with(b"MZ") {
+        let _ = std::fs::remove_file(path);
+        return Err(AppError::Other("下载到的不是有效的安装程序，请重试".into()));
+    }
+    Ok(())
+}
+
+/// 启动安装程序并退出本进程 —— 不退出的话安装程序覆盖不了正在运行的文件
+#[tauri::command]
+pub fn install_update(app: tauri::AppHandle, path: String) -> Result<()> {
+    let path = std::path::PathBuf::from(&path);
+
+    // 只允许运行我们自己刚下载到临时目录的那个文件
+    let expected_dir = std::env::temp_dir().join("ShenhePlayer-update");
+    if path.parent() != Some(expected_dir.as_path()) {
+        return Err(AppError::Other("非法的安装包路径".into()));
+    }
+    verify_installer(&path)?;
+
+    std::process::Command::new(&path)
+        .spawn()
+        .map_err(|e| AppError::Other(format!("启动安装程序失败: {e}")))?;
+
+    // 立刻退出：晚一点安装程序就会检测到本程序还在跑，弹「请先关闭」
+    app.exit(0);
+    Ok(())
 }
 
 async fn fetch_notes(client: &reqwest::Client, tag: &str) -> Option<String> {

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { open } from '@tauri-apps/plugin-dialog'
+import { listen } from '@tauri-apps/api/event'
 import * as api from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useSessionStore } from '@/stores/session'
-import type { DetectedPlayer, QualityPreset, Theme, UpdateInfo } from '@/types'
+import type { DetectedPlayer, DownloadProgress, QualityPreset, Theme, UpdateInfo } from '@/types'
 
 const settings = useSettingsStore()
 const session = useSessionStore()
@@ -30,6 +31,56 @@ async function checkUpdate() {
     updateError.value = String(e)
   } finally {
     checking.value = false
+  }
+}
+
+// ---- 应用内更新 ----
+const downloading = ref(false)
+const progress = ref<DownloadProgress | null>(null)
+const installerPath = ref('')
+let unlistenProgress: (() => void) | undefined
+
+onMounted(async () => {
+  unlistenProgress = await listen<DownloadProgress>('update:progress', (e) => {
+    progress.value = e.payload
+  })
+})
+
+onBeforeUnmount(() => unlistenProgress?.())
+
+const percent = computed(() => {
+  const p = progress.value
+  if (!p || !p.total) return 0
+  return Math.min(100, Math.round((p.downloaded / p.total) * 100))
+})
+
+const sizeText = computed(() => {
+  const p = progress.value
+  if (!p) return ''
+  const mb = (n: number) => (n / 1024 / 1024).toFixed(1)
+  return p.total ? `${mb(p.downloaded)} / ${mb(p.total)} MB` : `${mb(p.downloaded)} MB`
+})
+
+async function download() {
+  if (downloading.value) return
+  downloading.value = true
+  updateError.value = ''
+  progress.value = null
+  try {
+    installerPath.value = await api.downloadUpdate()
+  } catch (e) {
+    updateError.value = String(e)
+  } finally {
+    downloading.value = false
+  }
+}
+
+/** 安装程序一起来本进程就退出，否则覆盖不了正在运行的文件 */
+async function install() {
+  try {
+    await api.installUpdate(installerPath.value)
+  } catch (e) {
+    updateError.value = String(e)
   }
 }
 
@@ -412,18 +463,46 @@ async function signOut() {
 
         <div class="about-actions">
           <button
-            v-if="update?.available"
+            v-if="update?.available && installerPath"
             class="btn btn-primary"
-            @click="api.openReleasePage(update!.url)"
+            @click="install"
+          >
+            <AppIcon name="check" :size="16" />
+            立即安装
+          </button>
+          <button
+            v-else-if="update?.available"
+            class="btn btn-primary"
+            :disabled="downloading"
+            @click="download"
           >
             <AppIcon name="download" :size="16" />
-            前往下载
+            {{ downloading ? '下载中…' : '下载并更新' }}
           </button>
-          <button class="btn" :disabled="checking" @click="checkUpdate">
+
+          <button
+            v-if="update?.available"
+            class="btn"
+            title="在浏览器里打开发布页"
+            @click="api.openReleasePage(update!.url)"
+          >
+            <AppIcon name="external" :size="16" />
+          </button>
+
+          <button class="btn" :disabled="checking || downloading" @click="checkUpdate">
             <AppIcon name="refresh" :size="16" />
             {{ checking ? '检查中…' : '检查更新' }}
           </button>
         </div>
+      </div>
+
+      <div v-if="downloading || installerPath" class="progress">
+        <div class="track">
+          <span :style="{ transform: `scaleX(${percent / 100})` }" />
+        </div>
+        <span class="t-caption dim num">
+          {{ installerPath ? '下载完成，点「立即安装」后程序会退出并启动安装程序' : `${percent}% · ${sizeText}` }}
+        </span>
       </div>
 
       <p v-if="update?.available && update.notes" class="notes t-caption">
@@ -827,6 +906,31 @@ async function signOut() {
 .about-actions .btn {
   padding: 0.42rem 0.9rem;
   font-size: 0.875rem;
+}
+
+.progress {
+  margin-top: 0.9rem;
+}
+
+.progress .track {
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--fill-2);
+  overflow: hidden;
+}
+
+.progress .track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 200ms var(--ease);
+}
+
+.progress .t-caption {
+  display: block;
+  margin-top: 0.4rem;
 }
 
 .notes {

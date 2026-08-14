@@ -7,6 +7,20 @@
 
 ## [未发布]
 
+## [0.1.3] - 2026-08-14
+
+### 新增
+
+- **应用内更新**。设置 → 关于 里点「下载并更新」，直接在软件内下载安装包并显示进度，
+  下载完点「立即安装」即可，不用再跳浏览器。仍然保留了打开发布页的入口。
+
+### 变更
+
+- **重新设计了应用图标**。改用超椭圆（squircle）外形而不是普通圆角矩形——圆角矩形的
+  直线与圆弧衔接处曲率突变，放大能看出「顶」一下；超椭圆曲率连续，这是 Apple 图标
+  看起来圆润的原因。配色换成单一色系的蓝色渐变，加了顶部内缘高光和底部暗角，
+  播放三角改为圆角。
+
 ## [0.1.2] - 2026-08-14
 
 ### 修复
@@ -68,7 +82,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.2...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.3
 [0.1.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.2
 [0.1.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.1
 [0.1.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.0

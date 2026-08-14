@@ -281,6 +281,14 @@ export interface UpdateInfo {
   noRelease: boolean
   notes: string
   url: string
+  /** Release 的 tag（带 v 前缀） */
+  tag: string
+}
+
+export interface DownloadProgress {
+  downloaded: number
+  /** 服务器给的总长度，未知时为 0 */
+  total: number
 }
 
 export interface AppInfo {

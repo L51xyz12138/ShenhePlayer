@@ -73,6 +73,8 @@ pub fn run() {
             // 更新
             update::check_update,
             update::open_release_page,
+            update::download_update,
+            update::install_update,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
