@@ -1,0 +1,242 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { useSessionStore } from '@/stores/session'
+import AppIcon from './AppIcon.vue'
+import type { BaseItem } from '@/types'
+
+const session = useSessionStore()
+const route = useRoute()
+/** 头像取不到时退回首字母，避免显示浏览器的破图图标 */
+const avatarFailed = ref(false)
+
+const viewIcon = (v: BaseItem) => {
+  switch (v.collectionType) {
+    case 'movies':
+      return 'film'
+    case 'tvshows':
+      return 'tv'
+    case 'music':
+      return 'music'
+    default:
+      return 'folder'
+  }
+}
+
+const activeLibrary = computed(() => (route.name === 'library' ? String(route.params.id) : ''))
+</script>
+
+<template>
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="mark" />
+      <span class="t-footnote">ShenhePlayer</span>
+    </div>
+
+    <div class="group">
+      <RouterLink :to="{ name: 'home' }" class="item" active-class="active">
+        <AppIcon name="home" :size="18" />
+        <span>首页</span>
+      </RouterLink>
+      <RouterLink :to="{ name: 'search' }" class="item" active-class="active">
+        <AppIcon name="search" :size="18" />
+        <span>搜索</span>
+      </RouterLink>
+      <RouterLink :to="{ name: 'servers' }" class="item" active-class="active">
+        <AppIcon name="server" :size="18" />
+        <span>服务器</span>
+      </RouterLink>
+    </div>
+
+    <div v-if="session.views.length" class="group">
+      <div class="group-title t-caption-2">媒体库</div>
+      <RouterLink
+        v-for="view in session.views"
+        :key="view.id"
+        :to="{ name: 'library', params: { id: view.id } }"
+        class="item"
+        :class="{ active: activeLibrary === view.id }"
+      >
+        <AppIcon :name="viewIcon(view)" :size="18" />
+        <span class="truncate">{{ view.name }}</span>
+      </RouterLink>
+    </div>
+
+    <div class="spacer" />
+
+    <div class="group">
+      <RouterLink :to="{ name: 'settings' }" class="item" active-class="active">
+        <AppIcon name="settings" :size="18" />
+        <span>设置</span>
+      </RouterLink>
+    </div>
+
+    <RouterLink
+      v-if="!session.session"
+      :to="{ name: 'servers' }"
+      class="account offline"
+    >
+      <div class="avatar dim">
+        <AppIcon name="server" :size="15" />
+      </div>
+      <div class="who">
+        <div class="truncate t-footnote">未连接</div>
+        <div class="truncate t-caption-2 dim-3">选择一台服务器</div>
+      </div>
+    </RouterLink>
+
+    <RouterLink v-else :to="{ name: 'servers' }" class="account">
+      <img
+        v-if="session.session.avatarUrl && !avatarFailed"
+        :src="session.session.avatarUrl"
+        alt=""
+        @error="avatarFailed = true"
+      />
+      <div v-else class="avatar">
+        {{ session.session.userName.slice(0, 1).toUpperCase() }}
+      </div>
+      <div class="who">
+        <div class="truncate t-footnote">{{ session.session.userName }}</div>
+        <div class="truncate t-caption-2 dim-3">{{ session.session.serverName }}</div>
+      </div>
+      <AppIcon name="chevron-right" :size="15" class="switch" />
+    </RouterLink>
+  </nav>
+</template>
+
+<style scoped>
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  width: var(--sidebar-w);
+  flex: none;
+  padding: var(--sp-4) 0.75rem var(--sp-3);
+  border-right: 1px solid var(--separator);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  color: var(--label-2);
+  font-weight: 600;
+  letter-spacing: -0.004em;
+}
+
+/* 图标不用渐变——Apple 的做法是单色几何形，克制 */
+.mark {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  background: var(--label);
+}
+
+.mark::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 4.5px;
+  border-left: 6px solid var(--bg);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.group-title {
+  padding: 0 0.6rem 0.4rem;
+  font-weight: 600;
+  color: var(--label-3);
+  text-transform: uppercase;
+}
+
+/* 选中态用一块圆角填充，不用左侧色条——更接近 Apple 侧边栏 */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--r-sm);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.002em;
+  color: var(--label-2);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
+}
+
+.item span {
+  min-width: 0;
+}
+
+.item:hover {
+  background: var(--fill-1);
+  color: var(--label);
+}
+
+.item:active {
+  transform: scale(0.985);
+}
+
+.item.active {
+  background: var(--fill-2);
+  color: var(--label);
+  font-weight: 570;
+}
+
+.item.active svg {
+  color: var(--accent);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  transition: background var(--t-fast) var(--ease);
+}
+
+.account:hover {
+  background: var(--fill-2);
+}
+
+.switch {
+  flex: none;
+  margin-left: auto;
+  color: var(--label-3);
+}
+
+.account img,
+.avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-full);
+  object-fit: cover;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  color: var(--label);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.who {
+  min-width: 0;
+  line-height: 1.25;
+}
+</style>

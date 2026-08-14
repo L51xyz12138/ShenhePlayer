@@ -1,0 +1,29 @@
+{
+  "name": "shenhe-player",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "pinia": "^3",
+    "vue": "^3.5",
+    "vue-router": "^4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^26.2.0",
+    "@vitejs/plugin-vue": "^6",
+    "typescript": "~5.9",
+    "vite": "^7",
+    "vue-tsc": "^3"
+  }
+}

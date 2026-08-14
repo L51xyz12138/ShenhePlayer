@@ -1,0 +1,170 @@
+/* 设计令牌。
+ *
+ * 按 Apple 深色模式的做法：中性近黑打底（不带蓝紫色偏），层级靠中性灰的
+ * 明度差和半透明材质区分，强调色只用一个系统蓝，且只用在真正需要引导的
+ * 地方。字号/字距/行高照搬 SF Pro 的比例关系。
+ */
+
+:root {
+  /* ---- 背景：Apple 深色模式的中性黑 ---- */
+  --bg: #000000;
+  --bg-1: #0d0d0f;
+  --bg-2: #1c1c1e;
+  --bg-3: #2c2c2e;
+  --bg-4: #3a3a3c;
+
+  /* ---- 填充：半透明中性灰，叠在任何背景上都成立 ---- */
+  --fill-1: rgba(120, 120, 128, 0.16);
+  --fill-2: rgba(120, 120, 128, 0.24);
+  --fill-3: rgba(120, 120, 128, 0.32);
+  --fill-4: rgba(120, 120, 128, 0.44);
+
+  /* ---- 分隔线：极细、极淡，只做暗示 ---- */
+  --separator: rgba(255, 255, 255, 0.09);
+  --separator-strong: rgba(255, 255, 255, 0.16);
+
+  /* ---- 文字：主/次/三级，靠透明度分层而不是换颜色 ---- */
+  --label: #ffffff;
+  --label-2: rgba(235, 235, 245, 0.6);
+  --label-3: rgba(235, 235, 245, 0.3);
+  --label-4: rgba(235, 235, 245, 0.18);
+
+  /* ---- 强调色：systemBlue（深色模式版本）---- */
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --accent-soft: rgba(10, 132, 255, 0.16);
+  --accent-glow: rgba(10, 132, 255, 0.35);
+
+  --red: #ff453a;
+  --green: #32d74b;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+
+  /* ---- 圆角：Apple 的连续曲率靠更大的半径来近似 ---- */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-full: 999px;
+
+  /* ---- 阴影：面积越大越厚重 ---- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.66);
+
+  /* ---- 动效：临界阻尼，响应 0.3~0.4s；只有手势甩出才给回弹 ---- */
+  --ease: cubic-bezier(0.32, 0.72, 0.24, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.28, 0.42, 1);
+  --t-fast: 140ms;
+  --t-base: 300ms;
+  --t-slow: 450ms;
+
+  /* ---- 间距：8pt 网格，用 rem 跟随系统字号 ---- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+
+  /* ---- 布局 ---- */
+  --titlebar-h: 44px;
+  --sidebar-w: 236px;
+  --page-pad: 2.75rem;
+
+  /* ---- 材质：Apple 的 regular / thick material ---- */
+  --material: rgba(28, 28, 30, 0.68);
+  --material-thick: rgba(22, 22, 24, 0.86);
+  --material-blur: saturate(180%) blur(30px);
+}
+
+/* ---------------------------------------------------------------- 亮色
+ * Apple 浅色模式：白底 + systemGroupedBackground 的浅灰分层，
+ * 文字用带透明度的黑而不是灰色，这样叠在任何背景上都成立。
+ * 只覆盖需要翻转的令牌，圆角/动效/间距全部沿用。
+ */
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-1: #f2f2f7;
+  --bg-2: #e9e9ee;
+  --bg-3: #dededf;
+  --bg-4: #d1d1d6;
+
+  --fill-1: rgba(120, 120, 128, 0.1);
+  --fill-2: rgba(120, 120, 128, 0.16);
+  --fill-3: rgba(120, 120, 128, 0.22);
+  --fill-4: rgba(120, 120, 128, 0.3);
+
+  --separator: rgba(60, 60, 67, 0.16);
+  --separator-strong: rgba(60, 60, 67, 0.29);
+
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.6);
+  --label-3: rgba(60, 60, 67, 0.34);
+  --label-4: rgba(60, 60, 67, 0.18);
+
+  --accent: #007aff;
+  --accent-hover: #0064d2;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-glow: rgba(0, 122, 255, 0.28);
+
+  --red: #ff3b30;
+  --green: #34c759;
+  --orange: #ff9500;
+  --yellow: #ffcc00;
+
+  /* 浅色下阴影要轻得多，否则会显得脏 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.18);
+
+  --material: rgba(255, 255, 255, 0.72);
+  --material-thick: rgba(249, 249, 251, 0.9);
+}
+
+/* 低性能模式：毛玻璃和动效是最贵的两项，直接换成实色与瞬时切换 */
+:root[data-perf='low'] {
+  --material: #1a1a1c;
+  --material-thick: #151517;
+  --material-blur: none;
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.6);
+  --t-fast: 0ms;
+  --t-base: 0ms;
+  --t-slow: 0ms;
+}
+
+:root[data-perf='low'][data-theme='light'] {
+  --material: #f7f7f9;
+  --material-thick: #ffffff;
+  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+/* 系统偏好优先于应用设置 */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material: #1a1a1c;
+    --material-thick: #151517;
+    --material-blur: none;
+  }
+
+  :root[data-theme='light'] {
+    --material: #f7f7f9;
+    --material-thick: #ffffff;
+  }
+}
+
+/* 播放控制层永远是深色：它叠在视频上，跟随亮色主题会看不清 */
+:root[data-surface='player'],
+:root[data-surface='player'][data-theme='light'] {
+  --label: #ffffff;
+  --label-2: rgba(235, 235, 245, 0.6);
+  --label-3: rgba(235, 235, 245, 0.3);
+  --separator: rgba(255, 255, 255, 0.09);
+  --separator-strong: rgba(255, 255, 255, 0.16);
+  --material: rgba(28, 28, 30, 0.68);
+  --material-thick: rgba(22, 22, 24, 0.86);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.66);
+}
