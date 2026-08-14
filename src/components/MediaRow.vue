@@ -157,6 +157,11 @@ a.heading:hover .chevron {
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x proximity;
+  /* 必须和 padding-inline 一致：snapport 默认是 padding box，
+     卡片的 scroll-snap-align: start 会把第一张对齐到内边距之后，
+     等于开局就自动滚掉一个 padding，左边距看起来就没了 —— 行标题和
+     海报因此对不齐。设了 scroll-padding 之后初始位置才是 0。 */
+  scroll-padding-inline: var(--page-pad);
   scrollbar-width: none;
 }
 

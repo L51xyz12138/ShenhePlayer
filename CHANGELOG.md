@@ -7,6 +7,14 @@
 
 ## [未发布]
 
+## [0.2.2] - 2026-08-15
+
+### 修复
+
+- **首页里会横向滚动的那些行，初始位置贴着侧边栏，和上方的行标题对不齐**。
+  条目少、不需要滚动的行反而是对的，所以看起来像「有的对齐有的不对齐」。
+- 搜索框在宽窗口下只占中间一小段。现在铺满标题栏（返回按钮与窗口按钮之间的整行）。
+
 ## [0.2.1] - 2026-08-14
 
 ### 修复
@@ -128,7 +136,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.1...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.2
 [0.2.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.1
 [0.2.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.0
 [0.1.5]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.5
