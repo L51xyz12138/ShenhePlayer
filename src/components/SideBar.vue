@@ -33,74 +33,74 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
       <span class="t-footnote">ShenhePlayer</span>
     </div>
 
-    <div class="group">
-      <RouterLink :to="{ name: 'home' }" class="item" active-class="active">
+    <div class="scroll">
+      <div class="group">
+        <RouterLink :to="{ name: 'home' }" class="item" active-class="active">
         <AppIcon name="home" :size="18" />
         <span>首页</span>
       </RouterLink>
-      <RouterLink :to="{ name: 'search' }" class="item" active-class="active">
-        <AppIcon name="search" :size="18" />
-        <span>搜索</span>
-      </RouterLink>
-      <RouterLink :to="{ name: 'servers' }" class="item" active-class="active">
-        <AppIcon name="server" :size="18" />
-        <span>服务器</span>
-      </RouterLink>
+        <RouterLink :to="{ name: 'search' }" class="item" active-class="active">
+          <AppIcon name="search" :size="18" />
+          <span>搜索</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'servers' }" class="item" active-class="active">
+          <AppIcon name="server" :size="18" />
+          <span>服务器</span>
+        </RouterLink>
+      </div>
+
+      <div v-if="session.views.length" class="group">
+        <div class="group-title t-caption-2">媒体库</div>
+        <RouterLink
+          v-for="view in session.views"
+          :key="view.id"
+          :to="{ name: 'library', params: { id: view.id } }"
+          class="item"
+          :class="{ active: activeLibrary === view.id }"
+        >
+          <AppIcon :name="viewIcon(view)" :size="18" />
+          <span class="truncate">{{ view.name }}</span>
+        </RouterLink>
+      </div>
     </div>
 
-    <div v-if="session.views.length" class="group">
-      <div class="group-title t-caption-2">媒体库</div>
-      <RouterLink
-        v-for="view in session.views"
-        :key="view.id"
-        :to="{ name: 'library', params: { id: view.id } }"
-        class="item"
-        :class="{ active: activeLibrary === view.id }"
-      >
-        <AppIcon :name="viewIcon(view)" :size="18" />
-        <span class="truncate">{{ view.name }}</span>
-      </RouterLink>
-    </div>
-
-    <div class="spacer" />
-
-    <div class="group">
+    <div class="bottom">
       <RouterLink :to="{ name: 'settings' }" class="item" active-class="active">
         <AppIcon name="settings" :size="18" />
         <span>设置</span>
       </RouterLink>
+
+      <RouterLink
+        v-if="!session.session"
+        :to="{ name: 'servers' }"
+        class="account offline"
+      >
+        <div class="avatar dim">
+          <AppIcon name="server" :size="15" />
+        </div>
+        <div class="who">
+          <div class="truncate t-footnote">未连接</div>
+          <div class="truncate t-caption-2 dim-3">选择一台服务器</div>
+        </div>
+      </RouterLink>
+
+      <RouterLink v-else :to="{ name: 'servers' }" class="account">
+        <img
+          v-if="session.session.avatarUrl && !avatarFailed"
+          :src="session.session.avatarUrl"
+          alt=""
+          @error="avatarFailed = true"
+        />
+        <div v-else class="avatar">
+          {{ session.session.userName.slice(0, 1).toUpperCase() }}
+        </div>
+        <div class="who">
+          <div class="truncate t-footnote">{{ session.session.userName }}</div>
+          <div class="truncate t-caption-2 dim-3">{{ session.session.serverName }}</div>
+        </div>
+        <AppIcon name="chevron-right" :size="15" class="switch" />
+      </RouterLink>
     </div>
-
-    <RouterLink
-      v-if="!session.session"
-      :to="{ name: 'servers' }"
-      class="account offline"
-    >
-      <div class="avatar dim">
-        <AppIcon name="server" :size="15" />
-      </div>
-      <div class="who">
-        <div class="truncate t-footnote">未连接</div>
-        <div class="truncate t-caption-2 dim-3">选择一台服务器</div>
-      </div>
-    </RouterLink>
-
-    <RouterLink v-else :to="{ name: 'servers' }" class="account">
-      <img
-        v-if="session.session.avatarUrl && !avatarFailed"
-        :src="session.session.avatarUrl"
-        alt=""
-        @error="avatarFailed = true"
-      />
-      <div v-else class="avatar">
-        {{ session.session.userName.slice(0, 1).toUpperCase() }}
-      </div>
-      <div class="who">
-        <div class="truncate t-footnote">{{ session.session.userName }}</div>
-        <div class="truncate t-caption-2 dim-3">{{ session.session.serverName }}</div>
-      </div>
-      <AppIcon name="chevron-right" :size="15" class="switch" />
-    </RouterLink>
   </nav>
 </template>
 
@@ -108,16 +108,40 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
   width: var(--sidebar-w);
   flex: none;
   padding: var(--sp-4) 0.75rem var(--sp-3);
   border-right: 1px solid var(--separator);
+  /* 整条不滚：媒体库一多就会把「设置」和账号挤出可视区 */
+  overflow: hidden;
+}
+
+/* 只有导航区滚动 */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
   overflow-y: auto;
   overflow-x: hidden;
+  /* 滚动条贴着边，不要挤压文字 */
+  margin-right: -0.35rem;
+  padding-right: 0.35rem;
+}
+
+/* 设置与账号常驻底部 */
+.bottom {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-top: var(--sp-3);
 }
 
 .brand {
+  flex: none;
+  margin-bottom: var(--sp-5);
   display: flex;
   align-items: center;
   gap: 0.5rem;

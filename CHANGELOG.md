@@ -7,6 +7,13 @@
 
 ## [未发布]
 
+## [0.1.4] - 2026-08-14
+
+### 修复
+
+- 媒体库数量多时，侧边栏底部的「设置」和账号入口会被挤出可视区，必须滚动才能点到。
+  现在只有中间的导航区滚动，设置与账号常驻底部。
+
 ## [0.1.3] - 2026-08-14
 
 ### 新增
@@ -82,7 +89,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.3...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.4
 [0.1.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.3
 [0.1.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.2
 [0.1.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.1
