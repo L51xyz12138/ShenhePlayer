@@ -34,7 +34,7 @@ function open() {
 </script>
 
 <template>
-  <article class="poster-card" :class="shape" @click="open">
+  <article class="poster-card" :class="`shape-${shape}`" @click="open">
     <div class="art">
       <LazyImage
         :src="src"
@@ -72,6 +72,9 @@ function open() {
 </template>
 
 <style scoped>
+/* 形状类带前缀：这个类在组件根元素上，而 Vue 的 scoped CSS 会给子组件根元素
+   也加上父组件的作用域属性 —— 父组件里任何一条 .poster / .thumb 规则都会命中它。
+   详情页的主视觉海报正好叫 .poster，撞上之后卡片被撑成 13.5rem 宽。 */
 .poster-card {
   min-width: 0;
 }

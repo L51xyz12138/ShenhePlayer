@@ -7,6 +7,20 @@
 
 ## [未发布]
 
+## [0.2.1] - 2026-08-14
+
+### 修复
+
+- **人物页的海报网格是乱的**：卡片被撑得比格子还宽，互相盖住，间距和圆角都没了。
+  原因是卡片组件根元素上的 `poster` 类名撞上了详情页给主视觉海报写的同名样式。
+- **人物页头部套用了影片的背景大图布局**，而人物没有背景图，只剩一条灰带；
+  强制白字在亮色主题下也不对。现在人物用独立的头部，跟随主题配色。
+
+### 变更
+
+- **启动不再是一片空白**。去掉了原来那个「正在连接媒体库…」的全屏遮罩，
+  改成立即显示界面外壳 + 骨架屏，骨架的结构和真实布局一致，加载完不跳版。
+
 ## [0.2.0] - 2026-08-14
 
 ### 修复
@@ -114,7 +128,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.0...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.1
 [0.2.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.0
 [0.1.5]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.5
 [0.1.4]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.1.4

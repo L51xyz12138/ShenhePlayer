@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import * as api from '@/api'
@@ -14,7 +14,6 @@ const session = useSessionStore()
 const settings = useSettingsStore()
 const player = usePlayerStore()
 const router = useRouter()
-const ready = ref(false)
 
 onMounted(async () => {
   try {
@@ -33,7 +32,6 @@ onMounted(async () => {
     console.error('初始化失败', e)
     session.error = String(e)
   } finally {
-    ready.value = true
     // 内容渲染完再显示窗口，避免启动白屏
     await getCurrentWindow().show()
   }
@@ -57,13 +55,6 @@ onMounted(async () => {
     </div>
 
     <PlaybackStatus />
-
-    <Transition name="fade">
-      <div v-if="!ready" class="boot">
-        <span class="mark" />
-        <span class="boot-text">正在连接媒体库…</span>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -91,40 +82,4 @@ onMounted(async () => {
   scrollbar-gutter: stable;
 }
 
-.boot {
-  position: absolute;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 1.1rem;
-  background: var(--bg);
-}
-
-.mark {
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
-  background: var(--label);
-  animation: pulse 1.6s var(--ease) infinite;
-}
-
-.boot-text {
-  font-size: 0.8125rem;
-  color: var(--label-3);
-  letter-spacing: 0.02em;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(0.9);
-    opacity: 0.65;
-  }
-}
 </style>

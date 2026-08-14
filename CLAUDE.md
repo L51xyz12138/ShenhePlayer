@@ -104,6 +104,14 @@ owned 窗口永远显示在 owner 之上、跟着 owner 最小化、不占任务
 父组件的 `.glyph` 样式管不到 `TrackMenu` 内部的按钮（scoped 只给子组件的**根元素**加作用域属性）。
 `TrackMenu` 因此自带一份和 `PlayerRoot` 一致的按钮样式。改播放器按钮样式时两处都要动。
 
+**反过来的坑更隐蔽**：既然作用域属性加在子组件根元素上，父组件里任何一条同名规则
+就会命中这个子组件。`PosterCard` 的根元素上原本有个 `:class="shape"`（值是 `poster`），
+详情页正好有一条给主视觉海报写的 `.poster { width: 13.5rem }` —— 结果人物页里每张
+海报卡片都被撑成 13.5rem，撑破栅格、盖掉间距和圆角。
+
+结论：**放在组件根元素上的类名必须带前缀**（`poster-card` / `shape-poster`），
+父组件里也别用 `poster` / `thumb` / `card` / `avatar` 这种通用词当局部类名。
+
 ### 6. Tauri capability 缺权限会让窗口永远不出现
 
 窗口默认 `visible: false`，等前端渲染完再 `show()`。但 `core:window:allow-show` 没配的话，

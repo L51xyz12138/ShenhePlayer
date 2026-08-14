@@ -48,22 +48,35 @@ const shapeFor = (kind: string) => (kind === 'resume' || kind === 'nextup' ? 'th
 
 <template>
   <div class="home">
+    <!-- 会话恢复和首页数据都算加载中，避免先闪一下「未连接」再闪骨架 -->
+    <div v-if="session.restoring || loading" class="skeleton">
+      <div class="sk-hero">
+        <div class="sk-hero-text">
+          <div class="sk-line title" />
+          <div class="sk-line meta" />
+          <div class="sk-line desc" />
+          <div class="sk-line desc short" />
+          <div class="sk-buttons">
+            <div class="sk-btn" />
+            <div class="sk-btn narrow" />
+          </div>
+        </div>
+      </div>
+
+      <div v-for="n in 2" :key="n" class="sk-row">
+        <div class="sk-line heading" />
+        <div class="sk-cards">
+          <div v-for="c in 8" :key="c" class="sk-card" :class="{ thumb: n === 1 }" />
+        </div>
+      </div>
+    </div>
+
     <!-- 没连服务器也能进来，这里给一条明确的去路 -->
-    <div v-if="!session.isAuthed" class="state">
+    <div v-else-if="!session.isAuthed" class="state">
       <AppIcon name="server" :size="30" />
       <p class="t-title-3">未连接服务器</p>
       <p class="t-footnote dim">连接一台 Emby 服务器后，这里会显示你的媒体库</p>
       <RouterLink :to="{ name: 'servers' }" class="btn btn-primary">选择服务器</RouterLink>
-    </div>
-
-    <div v-else-if="loading" class="skeleton">
-      <div class="sk-hero" />
-      <div v-for="n in 2" :key="n" class="sk-row">
-        <div class="sk-title" />
-        <div class="sk-cards">
-          <div v-for="c in 7" :key="c" class="sk-card" />
-        </div>
-      </div>
     </div>
 
     <div v-else-if="error" class="state">
@@ -148,39 +161,131 @@ const shapeFor = (kind: string) => (kind === 'resume' || kind === 'nextup' ? 'th
   margin-top: 0.9rem;
 }
 
-/* ---- 骨架屏：结构和真实内容一致，加载完不跳版 ---- */
+/* ---- 骨架屏 ----
+ * 结构照着真实布局摆，加载完不跳版；微光只在加载时跑，出内容立刻停。
+ */
 .skeleton {
-  --sk: rgba(255, 255, 255, 0.045);
+  --sk: var(--fill-1);
+}
+
+.sk-line,
+.sk-card,
+.sk-btn {
+  background: var(--sk);
+  border-radius: var(--r-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.sk-line::after,
+.sk-card::after,
+.sk-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: sk-shimmer 1.4s linear infinite;
+}
+
+@keyframes sk-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
 }
 
 .sk-hero {
-  height: 26.5rem;
-  background: linear-gradient(180deg, var(--sk), transparent);
+  display: flex;
+  align-items: flex-end;
+  min-height: 27rem;
+  padding: 5rem var(--page-pad) var(--sp-6);
+  background: linear-gradient(180deg, var(--fill-1), transparent);
+}
+
+.sk-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: min(34rem, 60%);
+}
+
+.sk-line.title {
+  height: 2.4rem;
+  width: 55%;
+  border-radius: var(--r-md);
+}
+
+.sk-line.meta {
+  height: 0.9rem;
+  width: 40%;
+}
+
+.sk-line.desc {
+  height: 0.8rem;
+  width: 100%;
+}
+
+.sk-line.desc.short {
+  width: 72%;
+}
+
+.sk-buttons {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.sk-btn {
+  width: 8rem;
+  height: 2.6rem;
+  border-radius: var(--r-full);
+}
+
+.sk-btn.narrow {
+  width: 5.5rem;
 }
 
 .sk-row {
   padding: 1.9rem var(--page-pad) 0;
 }
 
-.sk-title {
+.sk-line.heading {
   width: 9rem;
-  height: 1.15rem;
-  border-radius: var(--r-xs);
-  background: var(--sk);
-  margin-bottom: 1rem;
+  height: 1.3rem;
+  margin-bottom: 1.1rem;
 }
 
 .sk-cards {
   display: flex;
-  gap: 1rem;
+  gap: 1.1rem;
   overflow: hidden;
 }
 
 .sk-card {
-  width: 10.25rem;
+  width: 10.5rem;
   flex: none;
   aspect-ratio: 2 / 3;
   border-radius: var(--r-md);
-  background: var(--sk);
+}
+
+.sk-card.thumb {
+  width: 18rem;
+  aspect-ratio: 16 / 9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-line::after,
+  .sk-card::after,
+  .sk-btn::after {
+    animation: none;
+  }
 }
 </style>

@@ -202,8 +202,33 @@ async function togglePlayed() {
     </div>
 
     <template v-else-if="item">
+      <!-- ---- 人物：没有背景图，用素净的头部，跟随主题配色 ---- -->
+      <header v-if="isPerson" class="person-hero">
+        <LazyImage
+          :src="posterUrl(item, 600)"
+          :alt="item.name"
+          class="person-portrait"
+          eager
+          rounded="var(--r-lg)"
+        >
+          <template #fallback><AppIcon name="user" :size="34" /></template>
+        </LazyImage>
+
+        <div class="person-info">
+          <h1 class="t-large-title">{{ item.name }}</h1>
+          <div class="person-meta t-footnote dim">
+            <span class="pill type">{{ typeLabel(item.type) }}</span>
+            <span v-if="item.productionYear">{{ item.productionYear }} 年生</span>
+            <span>{{ related.length }} 部作品</span>
+          </div>
+          <p v-if="item.overview" class="person-overview t-subhead dim clamp-3">
+            {{ item.overview }}
+          </p>
+        </div>
+      </header>
+
       <!-- ---- 顶部大图 ---- -->
-      <div class="hero">
+      <div v-else class="hero">
         <div
           v-if="backdrop"
           class="backdrop"
@@ -215,7 +240,7 @@ async function togglePlayed() {
           <LazyImage
             :src="posterUrl(item, 600)"
             :alt="item.name"
-            class="poster"
+            class="hero-poster"
             eager
             rounded="var(--r-md)"
           >
@@ -268,11 +293,7 @@ async function togglePlayed() {
               <span v-for="g in item.genres.slice(0, 6)" :key="g" class="genre">{{ g }}</span>
             </div>
 
-            <div v-if="isPerson" class="actions">
-              <span class="t-footnote dim">{{ related.length }} 部作品</span>
-            </div>
-
-            <div v-else class="actions">
+            <div class="actions">
               <button class="btn btn-white lg" @click="play()">
                 <AppIcon name="play" :size="17" filled />
                 {{ resumable ? `继续 ${formatTime(resumeAt)}` : '播放' }}
@@ -466,7 +487,7 @@ async function togglePlayed() {
   align-items: flex-end;
 }
 
-.poster {
+.hero-poster {
   width: 13.5rem;
   flex: none;
   box-shadow: var(--shadow-lg);
@@ -643,6 +664,39 @@ async function togglePlayed() {
   display: block;
   height: 100%;
   background: var(--accent);
+}
+
+/* ---- 人物头部 ---- */
+.person-hero {
+  display: flex;
+  align-items: flex-end;
+  gap: 2rem;
+  padding: 2.5rem var(--page-pad) 0;
+}
+
+.person-portrait {
+  width: 11rem;
+  flex: none;
+  box-shadow: var(--shadow-md);
+}
+
+.person-info {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 0.4rem;
+}
+
+.person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.7rem 0;
+}
+
+.person-overview {
+  max-width: 46rem;
+  margin: 0;
 }
 
 /* ---- 内容区块 ---- */

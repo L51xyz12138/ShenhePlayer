@@ -51,7 +51,13 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
         </RouterLink>
       </div>
 
-      <div v-if="session.views.length" class="group">
+      <!-- 会话恢复期间先摆几条占位，别让侧边栏看着是空的 -->
+      <div v-if="session.restoring && !session.views.length" class="group">
+        <div class="group-title t-caption-2">媒体库</div>
+        <div v-for="n in 5" :key="n" class="sk-item" />
+      </div>
+
+      <div v-else-if="session.views.length" class="group">
         <div class="group-title t-caption-2">媒体库</div>
         <RouterLink
           v-for="view in session.views"
@@ -226,6 +232,45 @@ const activeLibrary = computed(() => (route.name === 'library' ? String(route.pa
 
 .item.active svg {
   color: var(--accent);
+}
+
+/* 媒体库加载中的占位条 */
+.sk-item {
+  height: 1.55rem;
+  margin: 0.45rem 0.6rem;
+  border-radius: var(--r-xs);
+  background: var(--fill-1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sk-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: sk-shimmer 1.4s linear infinite;
+}
+
+@keyframes sk-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-item::after {
+    animation: none;
+  }
 }
 
 /* 有新版本时的小红点 */
