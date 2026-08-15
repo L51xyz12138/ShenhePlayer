@@ -7,6 +7,12 @@
 
 ## [未发布]
 
+## [0.2.4] - 2026-08-15
+
+### 变更
+
+- 换用申鹤的立绘作为应用图标，沿用原来的超椭圆外形。
+
 ## [0.2.3] - 2026-08-15
 
 ### 修复
@@ -146,7 +152,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.3...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.4
 [0.2.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.3
 [0.2.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.2
 [0.2.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.1

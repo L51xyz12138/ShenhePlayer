@@ -59,7 +59,7 @@ npm run app:build    # 打包出 NSIS 安装程序
 
 ```bash
 npm run build                  # 只做前端类型检查 + 构建
-node scripts/gen-icons.mjs     # 重新生成应用图标
+powershell -File scripts/make-icon.ps1 -In <图片>   # 从图片重新生成应用图标
 ```
 
 自检（不连服务器验证内置播放器）：

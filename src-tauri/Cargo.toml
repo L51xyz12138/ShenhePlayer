@@ -1,6 +1,6 @@
 [package]
 name = "shenhe-player"
-version = "0.2.3"
+version = "0.2.4"
 description = "ShenhePlayer - a fast, beautiful Emby client for Windows"
 authors = ["ShenhePlayer"]
 edition = "2021"

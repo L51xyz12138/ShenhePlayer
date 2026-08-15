@@ -245,7 +245,20 @@ SHENHE_SELFTEST=1 npm run app:dev
 | `click.ps1` | 在自己的窗口内点击 / 滚动 / 截图，同样带前台归属校验 |
 | `poke-wheel.ps1` | 打开播放器弹窗后在弹窗内滚滚轮，验证滚动没被音量抢走 |
 | `crop.ps1` | 裁剪/放大截图局部 |
-| `gen-icons.mjs` | 重新生成应用图标（纯 Node 手写 PNG/ICO 编码） |
+| `make-icon.ps1` | 把任意图片转成完整图标集（超椭圆遮罩 + 多尺寸 ICO） |
+
+## 应用图标
+
+图标是从一张立绘生成的，不是代码画的。重新生成：
+
+```powershell
+powershell -File scripts/make-icon.ps1 -In <图片> -Zoom 0.72 -FocusX 0.56 -FocusY 0.45
+```
+
+`-Zoom` / `-FocusX` / `-FocusY` 用来把裁切框对准人脸 —— 不裁的话人物在 16~32px
+的任务栏尺寸下会糊成一团。脚本会套上和界面同一套超椭圆遮罩，并打包 8 个尺寸的 ICO。
+
+源图不入库（体积大且是版权素材），仓库里只有生成好的图标。
 
 ## 代码约定
 

@@ -7,7 +7,13 @@ param(
   # Shrink the artwork inside the icon, 0 = fill edge to edge
   [double]$Inset = 0.0,
   # Skip the rounded-square mask and keep the full square
-  [switch]$NoMask
+  [switch]$NoMask,
+  # How much of the source to keep, 1.0 = the whole square.
+  # Crop in so the subject still reads at 16-32px in the taskbar.
+  [double]$Zoom = 1.0,
+  # Where to center that crop, normalized 0..1 over the source image
+  [double]$FocusX = 0.5,
+  [double]$FocusY = 0.5
 )
 
 # Turn a piece of artwork into the full Windows/Tauri icon set.
@@ -23,13 +29,62 @@ Add-Type -AssemblyName System.Drawing
 if (-not (Test-Path $In)) { Write-Output "NOT_FOUND: $In"; exit 1 }
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
 
-$src = [System.Drawing.Image]::FromFile((Resolve-Path $In))
+# GDI+ cannot read WebP / HEIF. WIC can (Windows ships those codecs), so fall
+# back to a WPF BitmapDecoder and copy the pixels into a GDI+ bitmap.
+function Import-Artwork([string]$path) {
+  $full = (Resolve-Path $path).Path
+  try {
+    $img = [System.Drawing.Image]::FromFile($full)
+    if ($img) { return $img }
+  } catch {
+    # 注意用 Write-Host：函数里 Write-Output 的内容也会算进返回值，
+    # 调用方拿到的就变成 [诊断字符串, 位图] 的数组了
+    Write-Host '  GDI+ 读不了这个格式，改用 WIC 解码'
+  }
+
+  Add-Type -AssemblyName PresentationCore, WindowsBase
+  $decoder = [System.Windows.Media.Imaging.BitmapDecoder]::Create(
+    (New-Object System.Uri $full),
+    [System.Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,
+    [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+
+  $conv = New-Object System.Windows.Media.Imaging.FormatConvertedBitmap
+  $conv.BeginInit()
+  $conv.Source = $decoder.Frames[0]
+  $conv.DestinationFormat = [System.Windows.Media.PixelFormats]::Bgra32
+  $conv.EndInit()
+
+  $w = $conv.PixelWidth
+  $h = $conv.PixelHeight
+  $stride = $w * 4
+  $buf = New-Object byte[] ($stride * $h)
+  $conv.CopyPixels($buf, $stride, 0)
+
+  $bmp = New-Object System.Drawing.Bitmap $w, $h,
+    ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $rect = New-Object System.Drawing.Rectangle 0, 0, $w, $h
+  $data = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::WriteOnly,
+    [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  for ($y = 0; $y -lt $h; $y++) {
+    [System.Runtime.InteropServices.Marshal]::Copy(
+      $buf, $y * $stride, [IntPtr]($data.Scan0.ToInt64() + $y * $data.Stride), $stride)
+  }
+  $bmp.UnlockBits($data)
+  return $bmp
+}
+
+$src = Import-Artwork $In
+if (-not $src) { Write-Output 'DECODE_FAILED'; exit 1 }
 Write-Output ("source: " + $src.Width + "x" + $src.Height)
 
-# Center-crop to a square so nothing gets stretched
-$side = [Math]::Min($src.Width, $src.Height)
-$sx = [int](($src.Width - $side) / 2)
-$sy = [int](($src.Height - $side) / 2)
+# Crop to a square around the focus point so nothing gets stretched
+$side = [int]([Math]::Min($src.Width, $src.Height) * [Math]::Min(1.0, [Math]::Max(0.05, $Zoom)))
+$sx = [int]($src.Width * $FocusX - $side / 2)
+$sy = [int]($src.Height * $FocusY - $side / 2)
+# Keep the crop inside the image
+$sx = [Math]::Max(0, [Math]::Min($sx, $src.Width - $side))
+$sy = [Math]::Max(0, [Math]::Min($sy, $src.Height - $side))
+Write-Output ("crop: " + $side + "x" + $side + " at " + $sx + "," + $sy)
 
 function New-IconBitmap([int]$size) {
   $bmp = New-Object System.Drawing.Bitmap $size, $size,
