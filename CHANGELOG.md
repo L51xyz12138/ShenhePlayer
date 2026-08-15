@@ -7,6 +7,14 @@
 
 ## [未发布]
 
+## [0.2.5] - 2026-08-15
+
+### 修复
+
+- **媒体库下滑会白屏并闪烁**。0.2.0 引入的网格窗口化渲染算错了可视范围，已撤回。
+  大列表的性能改为用另一种方式解决：所有海报共用一个 IntersectionObserver，
+  而不是每张图各建一个 —— 上千个观察者才是卡顿的主因。
+
 ## [0.2.4] - 2026-08-15
 
 ### 变更
@@ -152,7 +160,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.4...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.5
 [0.2.4]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.4
 [0.2.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.3
 [0.2.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.2

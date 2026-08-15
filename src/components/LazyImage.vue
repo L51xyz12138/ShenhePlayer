@@ -2,6 +2,7 @@
 // 图片进视口才加载 + 淡入。海报墙动辄几百张图，直接全量加载会把
 // 低端机的内存和解码线程打满。
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { observeOnce, unobserve } from '@/composables/lazyObserver'
 
 const props = withDefaults(
   defineProps<{
@@ -20,24 +21,15 @@ const loaded = ref(false)
 const failed = ref(false)
 const visible = ref(props.eager)
 
-let observer: IntersectionObserver | undefined
-
 onMounted(() => {
   if (visible.value || !el.value) return
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        visible.value = true
-        observer?.disconnect()
-      }
-    },
-    // 提前一屏开始加载，滚动时不会看到空位
-    { rootMargin: '400px 0px' },
-  )
-  observer.observe(el.value)
+  // 用全局共享的观察者：一个媒体库上千张图，各建一个观察者会把主线程拖垮
+  observeOnce(el.value, () => (visible.value = true))
 })
 
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(() => {
+  if (el.value) unobserve(el.value)
+})
 
 watch(
   () => props.src,

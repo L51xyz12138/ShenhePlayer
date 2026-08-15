@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as api from '@/api'
 import PosterCard from '@/components/PosterCard.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { useSessionStore } from '@/stores/session'
 import { usePlayerStore } from '@/stores/player'
-import { useGridWindow } from '@/composables/useGridWindow'
 import type { BaseItem } from '@/types'
 
 const props = defineProps<{ id: string }>()
@@ -21,12 +20,6 @@ const done = ref(false)
 const sentinel = ref<HTMLElement>()
 
 const PAGE = 60
-
-// 只渲染可视区域的行。参数要和下面 .grid 的 CSS 对上。
-const { gridEl, visibleItems, firstIndex, padTop, padBottom, readGeometry } = useGridWindow(
-  items,
-  { minCardRem: 9.5, gapXRem: 1.1, gapYRem: 1.4, estimatedRowPx: 300 },
-)
 
 const SORTS = [
   { value: 'SortName', label: '名称' },
@@ -87,8 +80,6 @@ async function fetchPage(reset = false) {
     })
     items.value.push(...result.items)
     total.value = result.totalRecordCount
-    // 追加后网格变高，重新量一次几何
-    void nextTick(readGeometry)
     if (result.items.length < PAGE || items.value.length >= result.totalRecordCount) {
       done.value = true
     }
@@ -172,20 +163,17 @@ async function play(item: BaseItem) {
       </div>
     </header>
 
-    <!-- 上下留白撑起未渲染的行，滚动条长度才是对的 -->
-    <div :style="{ paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` }">
-      <div ref="gridEl" class="grid">
-        <PosterCard
-          v-for="(item, i) in visibleItems"
-          :key="item.id"
-          :item="item"
-          :eager="firstIndex + i < 18"
-          @play="play"
-        />
+    <div class="grid">
+      <PosterCard
+        v-for="(item, i) in items"
+        :key="item.id"
+        :item="item"
+        :eager="i < 18"
+        @play="play"
+      />
 
-        <!-- 首屏加载时占位，保证网格不塌陷 -->
-        <div v-for="n in loading && !items.length ? 18 : 0" :key="`sk-${n}`" class="sk-card" />
-      </div>
+      <!-- 首屏加载时占位，保证网格不塌陷 -->
+      <div v-for="n in loading && !items.length ? 18 : 0" :key="`sk-${n}`" class="sk-card" />
     </div>
 
     <div v-if="error" class="state">
