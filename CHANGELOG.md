@@ -7,6 +7,16 @@
 
 ## [未发布]
 
+## [0.2.3] - 2026-08-15
+
+### 修复
+
+- **启动时的自动检查更新形同虚设**：加了「一天最多查一次」的节流，结果是发布了新版本
+  也要等到第二天才提示。整个检查只是一次到 GitHub 的重定向请求、响应不到 1 KB，
+  没有限频的必要，现在每次启动都查。
+- 搜索页的搜索框没有铺满内容区。
+- 标题栏的搜索框改回居中定宽（上个版本让它铺满整行了）。
+
 ## [0.2.2] - 2026-08-15
 
 ### 修复
@@ -136,7 +146,8 @@
 - 内置播放器需要系统里有 `mpv.exe`，安装包不含 mpv
 - 音乐类媒体库只做了基本浏览，没有专门的音乐播放界面
 
-[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.2...HEAD
+[未发布]: https://github.com/L51xyz12138/ShenhePlayer/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.3
 [0.2.2]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.2
 [0.2.1]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.1
 [0.2.0]: https://github.com/L51xyz12138/ShenhePlayer/releases/tag/v0.2.0

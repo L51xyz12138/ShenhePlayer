@@ -74,8 +74,7 @@ const canGoBack = () => window.history.length > 1 && route.name !== 'home'
   position: relative;
   z-index: 40;
   display: grid;
-  /* 中间一栏吃掉返回按钮和窗口按钮之外的全部宽度 */
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr minmax(0, 22rem) 1fr;
   align-items: center;
   gap: var(--sp-4);
   height: var(--titlebar-h);

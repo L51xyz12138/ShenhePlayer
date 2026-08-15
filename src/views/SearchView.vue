@@ -150,7 +150,6 @@ async function play(item: BaseItem) {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  max-width: 34rem;
   padding: 0.7rem 1.1rem;
   border-radius: var(--r-full);
   background: var(--fill-1);

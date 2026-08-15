@@ -154,8 +154,6 @@ pub struct Settings {
     pub ui: UiSettings,
     pub window: WindowState,
     pub player_window: WindowState,
-    /// 上次自动检查更新的时间戳（秒），每天最多查一次
-    pub last_update_check: i64,
 }
 
 impl Default for Settings {
@@ -168,7 +166,6 @@ impl Default for Settings {
             ui: UiSettings::default(),
             window: WindowState::default(),
             player_window: WindowState::default(),
-            last_update_check: 0,
         }
     }
 }

@@ -114,32 +114,24 @@ pub async fn check_update() -> Result<UpdateInfo> {
     })
 }
 
-/// 启动时的静默检查：一天最多一次，有新版本就广播给前端挂角标。
+/// 启动时的静默检查，有新版本就广播给前端挂角标。
 /// 失败一律忽略——没网、被墙、限流都不该在启动时弹错误。
-pub fn spawn_startup_check(app: tauri::AppHandle, state: std::sync::Arc<crate::state::AppState>) {
+///
+/// 不做节流：整个检查就是一次到 github.com 的 302，响应不到 1 KB。
+/// 之前按「一天最多一次」限频，结果是发了新版本也要等到第二天才提示，
+/// 完全违背用户对「启动时检查更新」的预期。
+pub fn spawn_startup_check(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
-        const DAY: i64 = 24 * 60 * 60;
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs() as i64)
-            .unwrap_or(0);
-
-        if now - state.settings.read().last_update_check < DAY {
-            return;
-        }
-
         // 别和启动时那一堆媒体库请求抢带宽
-        tokio::time::sleep(Duration::from_secs(8)).await;
+        tokio::time::sleep(Duration::from_secs(6)).await;
 
-        let Ok(info) = check_update().await else {
-            return;
-        };
-
-        state.settings.write().last_update_check = now;
-        let _ = state.save_settings();
-
-        if info.available {
-            let _ = app.emit("update:available", info);
+        match check_update().await {
+            Ok(info) if info.available => {
+                log::info!("检查到新版本 {}", info.latest);
+                let _ = app.emit("update:available", info);
+            }
+            Ok(_) => log::info!("已是最新版本"),
+            Err(e) => log::debug!("启动检查更新失败: {e}"),
         }
     });
 }

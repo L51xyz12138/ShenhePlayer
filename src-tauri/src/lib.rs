@@ -99,7 +99,7 @@ pub fn run() {
             }
 
             spawn_show_fallback(handle.clone());
-            update::spawn_startup_check(handle.clone(), app_state.clone());
+            update::spawn_startup_check(handle.clone());
             spawn_progress_reporter(handle.clone(), app_state.clone());
 
             // 冒烟自检：SHENHE_SELFTEST=1 启动时直接跑一遍内置播放器，
